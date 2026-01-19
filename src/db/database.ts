@@ -1,15 +1,15 @@
 /**
  * vkTUNEos Database Layer
  * SQLite with tenant isolation (Row-Level Security pattern)
- * 
+ *
  * Domain: vkTUNEos.com
  * Version: 1.0
  */
 
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  Coordinate, 
+import {
+  Coordinate,
   CoordinateRecord,
   coordinateToString,
   getCoordinateKey
@@ -21,14 +21,26 @@ import {
 
 let db: SqlJsDatabase | null = null;
 
+// WASM URL for sql.js - using jsDelivr CDN
+const WASM_URL = 'https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.wasm';
+
 export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
   try {
-    console.log('[DB] Loading sql.js from CDN...');
-    // For serverless environments, load WASM from jsDelivr CDN (reliable and fast)
+    console.log('[DB] Fetching sql.js WASM from CDN...');
+
+    // Fetch the WASM file manually (required for Node.js serverless)
+    const wasmResponse = await fetch(WASM_URL);
+    if (!wasmResponse.ok) {
+      throw new Error(`Failed to fetch WASM: ${wasmResponse.status} ${wasmResponse.statusText}`);
+    }
+    const wasmBinary = await wasmResponse.arrayBuffer();
+    console.log('[DB] WASM fetched successfully, size:', wasmBinary.byteLength);
+
+    // Initialize sql.js with the WASM binary
     const SQL = await initSqlJs({
-      locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`
+      wasmBinary: wasmBinary
     });
-    console.log('[DB] sql.js loaded successfully');
+    console.log('[DB] sql.js initialized successfully');
 
     console.log('[DB] Creating in-memory database...');
     db = new SQL.Database();
