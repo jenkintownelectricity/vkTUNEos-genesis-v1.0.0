@@ -10,9 +10,15 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { initDatabase } from './db/database.js';
 import { initResourceTracking } from './core/resources.js';
+
+// ES module dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // API Routes
 import coordinatesRouter from './api/coordinates.js';
@@ -48,6 +54,14 @@ app.use(morgan('combined'));
 
 // JSON body parsing
 app.use(express.json({ limit: '10mb' }));
+
+// Serve static files (dashboard.html)
+app.use(express.static(path.join(__dirname, '..')));
+
+// Serve dashboard at root
+app.get('/', (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '..', 'dashboard.html'));
+});
 
 // ============================================================================
 // HEALTH CHECK
