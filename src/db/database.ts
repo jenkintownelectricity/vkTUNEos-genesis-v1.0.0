@@ -21,8 +21,8 @@ import {
 
 let db: SqlJsDatabase | null = null;
 
-// WASM URL for sql.js - using jsDelivr CDN
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/sql-wasm.wasm';
+// WASM URL for sql.js - must match installed version (1.12.0)
+const WASM_URL = 'https://cdn.jsdelivr.net/npm/sql.js@1.12.0/dist/sql-wasm.wasm';
 
 export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
   try {
