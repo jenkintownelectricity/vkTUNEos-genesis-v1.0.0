@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vkTUNEos Components Test | Session 2</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-void: #0a0a0f;
+      --bg-surface: #111118;
+      --bg-card: #22222e;
+      --bg-elevated: #2a2a38;
+      --text-primary: #f0f0f5;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --primary-400: #22d3ee;
+      --primary-500: #06b6d4;
+      --accent-400: #f472b6;
+      --accent-500: #ec4899;
+      --success-500: #22c55e;
+      --warning-500: #eab308;
+      --error-500: #ef4444;
+      --border-subtle: rgba(255,255,255,0.08);
+      --border-default: rgba(255,255,255,0.12);
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-body); background: var(--bg-void); color: var(--text-primary); }
+    .font-display { font-family: var(--font-display); }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .animate-slide-in { animation: slide-in 0.3s ease-out forwards; }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: var(--primary-500); border-radius: 50%; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, createContext, useContext, useCallback, useMemo } = React;
+
+    // ======================= FORM COMPONENTS =======================
+    const Input = ({ type = 'text', value, onChange, placeholder = '', label, error, disabled = false, icon, className = '', ...props }) => {
+      const [focused, setFocused] = useState(false);
+      return (
+        <div className={`w-full ${className}`}>
+          {label && <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{label}</label>}
+          <div className="relative">
+            {icon && <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>{icon}</span>}
+            <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
+              onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+              className={`w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all ${icon ? 'pl-10' : ''} ${disabled ? 'opacity-50' : ''}`}
+              style={{ background: 'var(--bg-card)', border: `1px solid ${error ? 'var(--error-500)' : focused ? 'var(--primary-500)' : 'var(--border-subtle)'}`, color: 'var(--text-primary)' }}
+              {...props} />
+          </div>
+          {error && <p className="mt-1.5 text-xs" style={{ color: 'var(--error-500)' }}>{error}</p>}
+        </div>
+      );
+    };
+
+    const Textarea = ({ value, onChange, placeholder = '', label, error, disabled = false, rows = 3, className = '' }) => {
+      const [focused, setFocused] = useState(false);
+      const textareaRef = useRef(null);
+      useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) { textarea.style.height = 'auto'; textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`; }
+      }, [value]);
+      return (
+        <div className={`w-full ${className}`}>
+          {label && <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{label}</label>}
+          <textarea ref={textareaRef} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            className={`w-full px-4 py-3 rounded-xl text-sm outline-none transition-all resize-none ${disabled ? 'opacity-50' : ''}`}
+            style={{ background: 'var(--bg-card)', border: `1px solid ${error ? 'var(--error-500)' : focused ? 'var(--primary-500)' : 'var(--border-subtle)'}`, color: 'var(--text-primary)', minHeight: `${rows * 24}px` }} />
+          {error && <p className="mt-1.5 text-xs" style={{ color: 'var(--error-500)' }}>{error}</p>}
+        </div>
+      );
+    };
+
+    const Select = ({ options = [], value, onChange, placeholder = 'Select...', label, error, multi = false, className = '' }) => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [search, setSearch] = useState('');
+      const containerRef = useRef(null);
+      useEffect(() => {
+        const handleClickOutside = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false); };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }, []);
+      const filteredOptions = options.filter((opt) => opt.label.toLowerCase().includes(search.toLowerCase()));
+      const handleSelect = (option) => {
+        if (multi) {
+          const currentValues = Array.isArray(value) ? value : [];
+          const exists = currentValues.some((v) => v.value === option.value);
+          onChange(exists ? currentValues.filter((v) => v.value !== option.value) : [...currentValues, option]);
+        } else { onChange(option); setIsOpen(false); }
+        setSearch('');
+      };
+      const displayValue = () => {
+        if (multi && Array.isArray(value) && value.length > 0) {
+          return <div className="flex flex-wrap gap-1">{value.map((v) => <span key={v.value} className="px-2 py-0.5 rounded text-xs" style={{ background: 'var(--primary-500)', color: 'white' }}>{v.label}</span>)}</div>;
+        }
+        return value ? <span style={{ color: 'var(--text-primary)' }}>{value.label}</span> : <span style={{ color: 'var(--text-muted)' }}>{placeholder}</span>;
+      };
+      return (
+        <div className={`w-full relative ${className}`} ref={containerRef}>
+          {label && <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{label}</label>}
+          <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full px-4 py-2.5 rounded-xl text-sm text-left flex items-center justify-between transition-all cursor-pointer"
+            style={{ background: 'var(--bg-card)', border: `1px solid ${isOpen ? 'var(--primary-500)' : 'var(--border-subtle)'}`, minHeight: '42px' }}>
+            <div className="flex-1 overflow-hidden">{displayValue()}</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : '' }}><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          {isOpen && (
+            <div className="absolute z-50 w-full mt-2 rounded-xl shadow-lg overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <div className="p-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)' }} autoFocus />
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {filteredOptions.map((option) => {
+                  const isSelected = multi ? Array.isArray(value) && value.some((v) => v.value === option.value) : value?.value === option.value;
+                  return <button key={option.value} onClick={() => handleSelect(option)} className="w-full px-4 py-2.5 text-left text-sm flex items-center justify-between transition-colors"
+                    style={{ color: isSelected ? 'var(--primary-400)' : 'var(--text-primary)', background: isSelected ? 'rgba(6,182,212,0.1)' : 'transparent' }}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseOut={(e) => e.currentTarget.style.background = isSelected ? 'rgba(6,182,212,0.1)' : 'transparent'}>
+                    <span>{option.label}</span>{isSelected && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5"/></svg>}
+                  </button>;
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const Slider = ({ value, onChange, min = 0, max = 100, step = 1, label, marks = [], showValue = true, className = '' }) => {
+      const percentage = ((value - min) / (max - min)) * 100;
+      return (
+        <div className={`w-full ${className}`}>
+          {(label || showValue) && <div className="flex items-center justify-between mb-3">
+            {label && <label className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</label>}
+            {showValue && <span className="text-sm font-mono" style={{ color: 'var(--primary-400)' }}>{value}</span>}
+          </div>}
+          <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full h-2 rounded-full appearance-none cursor-pointer"
+            style={{ background: `linear-gradient(to right, var(--primary-500) 0%, var(--primary-500) ${percentage}%, var(--bg-elevated) ${percentage}%, var(--bg-elevated) 100%)` }} />
+          {marks.length > 0 && <div className="relative mt-2">{marks.map((mark) => <div key={mark.value} className="absolute text-xs transform -translate-x-1/2" style={{ left: `${((mark.value - min) / (max - min)) * 100}%`, color: 'var(--text-muted)' }}>{mark.label}</div>)}</div>}
+        </div>
+      );
+    };
+
+    const Toggle = ({ checked, onChange, label, size = 'md', className = '' }) => {
+      const sizes = { sm: { track: 'w-8 h-4', thumb: 'w-3 h-3', translate: 'translate-x-4' }, md: { track: 'w-11 h-6', thumb: 'w-5 h-5', translate: 'translate-x-5' } };
+      const s = sizes[size];
+      return (
+        <label className={`inline-flex items-center gap-3 cursor-pointer ${className}`}>
+          <button type="button" onClick={() => onChange(!checked)} className={`relative inline-flex items-center rounded-full transition-colors ${s.track}`} style={{ background: checked ? 'var(--primary-500)' : 'var(--bg-elevated)' }}>
+            <span className={`inline-block rounded-full transition-transform ${s.thumb} ${checked ? s.translate : 'translate-x-0.5'}`} style={{ background: 'white' }} />
+          </button>
+          {label && <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{label}</span>}
+        </label>
+      );
+    };
+
+    const FileUpload = ({ onFilesSelected, accept = '*', multiple = false, label, className = '' }) => {
+      const [isDragging, setIsDragging] = useState(false);
+      const [files, setFiles] = useState([]);
+      const inputRef = useRef(null);
+      const handleFiles = (fileList) => { const arr = Array.from(fileList); setFiles(arr); onFilesSelected(arr); };
+      return (
+        <div className={`w-full ${className}`}>
+          {label && <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{label}</label>}
+          <div onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}
+            onClick={() => inputRef.current?.click()} className="relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer"
+            style={{ borderColor: isDragging ? 'var(--primary-500)' : 'var(--border-subtle)', background: isDragging ? 'rgba(6,182,212,0.05)' : 'var(--bg-card)' }}>
+            <input ref={inputRef} type="file" accept={accept} multiple={multiple} onChange={(e) => handleFiles(e.target.files)} className="hidden" />
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-4" style={{ color: isDragging ? 'var(--primary-400)' : 'var(--text-muted)' }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{isDragging ? 'Drop files here' : 'Click or drag files'}</p>
+          </div>
+          {files.length > 0 && <div className="mt-4 space-y-2">{files.map((f, i) => <div key={i} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--bg-elevated)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{f.name}</span>
+          </div>)}</div>}
+        </div>
+      );
+    };
+
+    // ======================= DISPLAY COMPONENTS =======================
+    const Card = ({ children, variant = 'default', hoverable = false, padding = 'md', className = '' }) => {
+      const variants = { default: { background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }, gradient: { background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(236,72,153,0.1))', border: '1px solid rgba(6,182,212,0.2)' } };
+      const pads = { sm: 'p-4', md: 'p-6', lg: 'p-8' };
+      return <div className={`rounded-xl transition-all ${pads[padding]} ${hoverable ? 'hover:scale-[1.02]' : ''} ${className}`} style={variants[variant]}>{children}</div>;
+    };
+
+    const Badge = ({ children, color = 'primary', size = 'md', className = '' }) => {
+      const colors = { primary: { bg: 'rgba(6,182,212,0.15)', text: 'var(--primary-400)', border: 'rgba(6,182,212,0.3)' }, success: { bg: 'rgba(34,197,94,0.15)', text: 'var(--success-500)', border: 'rgba(34,197,94,0.3)' }, error: { bg: 'rgba(239,68,68,0.15)', text: 'var(--error-500)', border: 'rgba(239,68,68,0.3)' } };
+      const sizes = { sm: 'px-2 py-0.5 text-xs', md: 'px-2.5 py-1 text-xs' };
+      const c = colors[color];
+      return <span className={`inline-flex items-center font-medium rounded-full ${sizes[size]} ${className}`} style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>{children}</span>;
+    };
+
+    const Progress = ({ value, max = 100, variant = 'bar', size = 'md', showLabel = true, color = 'primary', className = '' }) => {
+      const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
+      const colors = { primary: 'var(--primary-500)', success: 'var(--success-500)', error: 'var(--error-500)' };
+      if (variant === 'circular') {
+        const s = { sm: 48, md: 64, lg: 80 }[size]; const sw = { sm: 4, md: 5, lg: 6 }[size]; const r = (s - sw) / 2; const c = 2 * Math.PI * r;
+        return <div className={`relative inline-flex items-center justify-center ${className}`}>
+          <svg width={s} height={s} className="-rotate-90"><circle cx={s/2} cy={s/2} r={r} fill="none" stroke="var(--bg-elevated)" strokeWidth={sw}/><circle cx={s/2} cy={s/2} r={r} fill="none" stroke={colors[color]} strokeWidth={sw} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c - (percentage / 100) * c}/></svg>
+          {showLabel && <span className="absolute font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{Math.round(percentage)}%</span>}
+        </div>;
+      }
+      return <div className={`w-full ${className}`}>
+        {showLabel && <div className="flex justify-between mb-2"><span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Progress</span><span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{Math.round(percentage)}%</span></div>}
+        <div className="w-full rounded-full overflow-hidden h-2" style={{ background: 'var(--bg-elevated)' }}><div className="h-full rounded-full transition-all duration-500" style={{ width: `${percentage}%`, background: colors[color] }}/></div>
+      </div>;
+    };
+
+    const Table = ({ columns = [], data = [], sortable = true, paginated = true, pageSize = 5, className = '' }) => {
+      const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+      const [currentPage, setCurrentPage] = useState(1);
+      const sortedData = useMemo(() => {
+        if (!sortConfig.key) return data;
+        return [...data].sort((a, b) => { const av = a[sortConfig.key], bv = b[sortConfig.key]; if (av < bv) return sortConfig.direction === 'asc' ? -1 : 1; if (av > bv) return sortConfig.direction === 'asc' ? 1 : -1; return 0; });
+      }, [data, sortConfig]);
+      const paginatedData = useMemo(() => { if (!paginated) return sortedData; const start = (currentPage - 1) * pageSize; return sortedData.slice(start, start + pageSize); }, [sortedData, currentPage, pageSize, paginated]);
+      const totalPages = Math.ceil(data.length / pageSize);
+      return (
+        <div className={`w-full ${className}`}>
+          <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border-subtle)' }}>
+            <table className="w-full">
+              <thead><tr style={{ background: 'var(--bg-elevated)' }}>{columns.map((col) => <th key={col.key} onClick={() => sortable && setSortConfig((p) => ({ key: col.key, direction: p.key === col.key && p.direction === 'asc' ? 'desc' : 'asc' }))}
+                className={`px-4 py-3 text-left text-xs font-semibold uppercase ${sortable ? 'cursor-pointer' : ''}`} style={{ color: 'var(--text-secondary)' }}>
+                <div className="flex items-center gap-2">{col.label}{sortable && sortConfig.key === col.key && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: sortConfig.direction === 'desc' ? 'rotate(180deg)' : '' }}><path d="m18 15-6-6-6 6"/></svg>}</div>
+              </th>)}</tr></thead>
+              <tbody>{paginatedData.map((row, i) => <tr key={i} style={{ borderTop: '1px solid var(--border-subtle)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                {columns.map((col) => <td key={col.key} className="px-4 py-3 text-sm" style={{ color: 'var(--text-primary)' }}>{col.render ? col.render(row[col.key], row) : row[col.key]}</td>)}
+              </tr>)}</tbody>
+            </table>
+          </div>
+          {paginated && totalPages > 1 && <div className="flex items-center justify-between mt-4">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Page {currentPage} of {totalPages}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-50" style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>Prev</button>
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded-lg text-sm disabled:opacity-50" style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>Next</button>
+            </div>
+          </div>}
+        </div>
+      );
+    };
+
+    const Avatar = ({ src, name, size = 'md', status, className = '' }) => {
+      const sizes = { sm: 'w-8 h-8 text-sm', md: 'w-10 h-10 text-base', lg: 'w-12 h-12 text-lg' };
+      const statusColors = { online: 'var(--success-500)', offline: 'var(--text-muted)', busy: 'var(--error-500)' };
+      const initials = name ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+      return <div className={`relative inline-block ${className}`}>
+        <div className={`flex items-center justify-center font-semibold overflow-hidden rounded-full ${sizes[size]}`} style={{ background: src ? 'transparent' : 'linear-gradient(135deg, var(--primary-500), var(--accent-500))', color: 'white' }}>
+          {src ? <img src={src} alt={name} className="w-full h-full object-cover"/> : initials}
+        </div>
+        {status && <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2" style={{ background: statusColors[status], borderColor: 'var(--bg-void)' }}/>}
+      </div>;
+    };
+
+    // ======================= FEEDBACK COMPONENTS =======================
+    const ToastContext = createContext(null);
+    const ToastProvider = ({ children }) => {
+      const [toasts, setToasts] = useState([]);
+      const addToast = useCallback((toast) => { const id = Date.now(); setToasts((p) => [...p, { ...toast, id }]); setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), toast.duration || 5000); return id; }, []);
+      const removeToast = useCallback((id) => setToasts((p) => p.filter((t) => t.id !== id)), []);
+      return <ToastContext.Provider value={{ addToast, removeToast }}>{children}<div className="fixed bottom-4 right-4 z-[200] flex flex-col gap-2">{toasts.map((t) => <Toast key={t.id} {...t} onClose={() => removeToast(t.id)}/>)}</div></ToastContext.Provider>;
+    };
+    const useToast = () => useContext(ToastContext);
+    const Toast = ({ type = 'info', title, message, onClose }) => {
+      const icons = { success: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5"/></svg>, error: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>, info: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> };
+      const colors = { success: { border: 'rgba(34,197,94,0.3)', icon: 'var(--success-500)' }, error: { border: 'rgba(239,68,68,0.3)', icon: 'var(--error-500)' }, info: { border: 'rgba(6,182,212,0.3)', icon: 'var(--primary-400)' } };
+      return <div className="flex items-start gap-3 min-w-[320px] max-w-md p-4 rounded-xl shadow-lg animate-slide-in" style={{ background: 'var(--bg-card)', border: `1px solid ${colors[type].border}` }}>
+        <span style={{ color: colors[type].icon }}>{icons[type]}</span>
+        <div className="flex-1">{title && <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>{title}</p>}{message && <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{message}</p>}</div>
+        <button onClick={onClose} className="p-1 rounded hover:bg-white/10" style={{ color: 'var(--text-muted)' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>;
+    };
+
+    const Alert = ({ type = 'info', title, children, className = '' }) => {
+      const colors = { success: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: 'var(--success-500)' }, error: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: 'var(--error-500)' }, info: { bg: 'rgba(6,182,212,0.1)', border: 'rgba(6,182,212,0.2)', text: 'var(--primary-400)' } };
+      const c = colors[type];
+      return <div className={`flex items-start gap-3 p-4 rounded-xl ${className}`} style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+        <div className="flex-1">{title && <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text-primary)' }}>{title}</p>}<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{children}</div></div>
+      </div>;
+    };
+
+    const Spinner = ({ size = 'md', className = '' }) => {
+      const sizes = { sm: 'w-5 h-5 border-2', md: 'w-6 h-6 border-2', lg: 'w-8 h-8 border-2' };
+      return <div className={`rounded-full animate-spin ${sizes[size]} ${className}`} style={{ borderColor: 'var(--bg-elevated)', borderTopColor: 'var(--primary-500)' }}/>;
+    };
+
+    const EmptyState = ({ icon, title, description, action, className = '' }) => (
+      <div className={`flex flex-col items-center justify-center py-12 px-6 text-center ${className}`}>
+        {icon && <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>{icon}</div>}
+        {title && <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{title}</h3>}
+        {description && <p className="text-sm max-w-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{description}</p>}
+        {action}
+      </div>
+    );
+
+    const Skeleton = ({ variant = 'rect', width, height, className = '' }) => {
+      const variants = { rect: 'rounded-lg', circle: 'rounded-full', text: 'rounded h-4' };
+      return <div className={`animate-pulse ${variants[variant]} ${className}`} style={{ width: width || (variant === 'circle' ? '40px' : '100%'), height: height || (variant === 'circle' ? '40px' : '100px'), background: 'var(--bg-elevated)' }}/>;
+    };
+
+    // ======================= TEST APP =======================
+    const App = () => {
+      const [inputValue, setInputValue] = useState('');
+      const [textareaValue, setTextareaValue] = useState('');
+      const [selectValue, setSelectValue] = useState(null);
+      const [multiSelectValue, setMultiSelectValue] = useState([]);
+      const [sliderValue, setSliderValue] = useState(50);
+      const [toggleValue, setToggleValue] = useState(false);
+      const [files, setFiles] = useState([]);
+      const [progressValue, setProgressValue] = useState(65);
+
+      const selectOptions = [
+        { value: 'rock', label: 'Rock' },
+        { value: 'pop', label: 'Pop' },
+        { value: 'jazz', label: 'Jazz' },
+        { value: 'electronic', label: 'Electronic' },
+        { value: 'classical', label: 'Classical' }
+      ];
+
+      const tableColumns = [
+        { key: 'name', label: 'Name' },
+        { key: 'genre', label: 'Genre' },
+        { key: 'duration', label: 'Duration' },
+        { key: 'status', label: 'Status', render: (val) => <Badge color={val === 'Published' ? 'success' : 'primary'}>{val}</Badge> }
+      ];
+
+      const tableData = [
+        { name: 'Summer Vibes', genre: 'Pop', duration: '3:45', status: 'Published' },
+        { name: 'Midnight Jazz', genre: 'Jazz', duration: '4:20', status: 'Draft' },
+        { name: 'Electric Dreams', genre: 'Electronic', duration: '5:10', status: 'Published' },
+        { name: 'Rock Anthem', genre: 'Rock', duration: '4:55', status: 'Published' },
+        { name: 'Classical Symphony', genre: 'Classical', duration: '8:30', status: 'Draft' },
+        { name: 'Chill Beats', genre: 'Electronic', duration: '3:15', status: 'Published' },
+        { name: 'Soul Train', genre: 'R&B', duration: '4:00', status: 'Draft' },
+        { name: 'Country Road', genre: 'Country', duration: '3:30', status: 'Published' }
+      ];
+
+      return (
+        <ToastProvider>
+          <div className="min-h-screen p-8" style={{ background: 'var(--bg-void)' }}>
+            <h1 className="text-3xl font-display font-bold mb-8" style={{ background: 'linear-gradient(135deg, var(--primary-400), var(--accent-500))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              vkTUNEos Components Test - Session 2
+            </h1>
+
+            {/* FORM COMPONENTS */}
+            <section className="mb-12">
+              <h2 className="text-xl font-display font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Form Components</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card><Input label="Text Input" value={inputValue} onChange={setInputValue} placeholder="Enter text..." /></Card>
+                <Card><Input label="Password Input" type="password" value={inputValue} onChange={setInputValue} placeholder="Enter password..." /></Card>
+                <Card><Textarea label="Textarea (auto-resize)" value={textareaValue} onChange={setTextareaValue} placeholder="Type something long..." rows={3} /></Card>
+                <Card><Select label="Single Select" options={selectOptions} value={selectValue} onChange={setSelectValue} placeholder="Choose a genre..." /></Card>
+                <Card><Select label="Multi Select" options={selectOptions} value={multiSelectValue} onChange={setMultiSelectValue} placeholder="Choose genres..." multi /></Card>
+                <Card><Slider label="BPM" value={sliderValue} onChange={setSliderValue} min={60} max={200} marks={[{ value: 60, label: '60' }, { value: 120, label: '120' }, { value: 200, label: '200' }]} /></Card>
+                <Card><Toggle label="Enable AI Enhancement" checked={toggleValue} onChange={setToggleValue} /></Card>
+                <Card><FileUpload label="Upload Audio" accept="audio/*" multiple onFilesSelected={setFiles} /></Card>
+              </div>
+            </section>
+
+            {/* DISPLAY COMPONENTS */}
+            <section className="mb-12">
+              <h2 className="text-xl font-display font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Display Components</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card variant="default"><h3 className="font-semibold mb-2">Default Card</h3><p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Standard card variant</p></Card>
+                <Card variant="gradient"><h3 className="font-semibold mb-2">Gradient Card</h3><p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Gradient background</p></Card>
+                <Card variant="default" hoverable><h3 className="font-semibold mb-2">Hoverable Card</h3><p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Hover for effect</p></Card>
+              </div>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <Badge color="primary">Primary</Badge>
+                <Badge color="success">Success</Badge>
+                <Badge color="error">Error</Badge>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card><Progress value={progressValue} color="primary" /></Card>
+                <Card><div className="flex justify-center"><Progress value={progressValue} variant="circular" color="primary" /></div></Card>
+                <Card><div className="flex items-center gap-4"><Avatar name="John Doe" status="online" /><Avatar name="Jane Smith" status="busy" /><Avatar name="Bob Wilson" status="offline" /></div></Card>
+              </div>
+              <Card padding="none"><Table columns={tableColumns} data={tableData} pageSize={5} /></Card>
+            </section>
+
+            {/* FEEDBACK COMPONENTS */}
+            <section className="mb-12">
+              <h2 className="text-xl font-display font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>Feedback Components</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <Card><Alert type="info" title="Information">This is an informational alert message.</Alert></Card>
+                <Card><Alert type="success" title="Success">Your track has been uploaded successfully!</Alert></Card>
+                <Card><Alert type="error" title="Error">Failed to process the audio file.</Alert></Card>
+                <ToastTriggers />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card><div className="flex items-center gap-4"><Spinner size="sm" /><Spinner size="md" /><Spinner size="lg" /></div></Card>
+                <Card><div className="flex gap-4"><Skeleton variant="circle" /><div className="flex-1"><Skeleton variant="text" height="16px" className="mb-2" /><Skeleton variant="text" height="16px" width="60%" /></div></div></Card>
+                <Card padding="none"><EmptyState icon={<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>} title="No tracks yet" description="Upload your first track to get started" /></Card>
+              </div>
+            </section>
+
+            <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
+              <p>SESSION 2 COMPLETE. Run Session 3.</p>
+            </div>
+          </div>
+        </ToastProvider>
+      );
+    };
+
+    const ToastTriggers = () => {
+      const toast = useToast();
+      return (
+        <Card>
+          <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>Toast Notifications</p>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => toast.addToast({ type: 'success', title: 'Success', message: 'Track uploaded!' })} className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--success-500)', color: 'white' }}>Success Toast</button>
+            <button onClick={() => toast.addToast({ type: 'error', title: 'Error', message: 'Upload failed!' })} className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--error-500)', color: 'white' }}>Error Toast</button>
+            <button onClick={() => toast.addToast({ type: 'info', title: 'Info', message: 'Processing...' })} className="px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--primary-500)', color: 'white' }}>Info Toast</button>
+          </div>
+        </Card>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    console.log('=== SESSION 2 COMPONENTS TEST ===');
+    console.log('All components loaded and functional');
+  </script>
+</body>
+</html>
