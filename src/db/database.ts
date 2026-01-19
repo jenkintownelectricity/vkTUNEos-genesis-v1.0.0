@@ -23,27 +23,32 @@ let db: SqlJsDatabase | null = null;
 
 export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
   try {
-    console.log('[DB] Loading sql.js...');
-    // For serverless environments, load WASM from CDN
+    console.log('[DB] Loading sql.js from CDN...');
+    // For serverless environments, load WASM from jsDelivr CDN (reliable and fast)
     const SQL = await initSqlJs({
-      locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+      locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`
     });
-    console.log('[DB] Creating database...');
+    console.log('[DB] sql.js loaded successfully');
+
+    console.log('[DB] Creating in-memory database...');
     db = new SQL.Database();
+    console.log('[DB] Database created');
 
     // Create tables
-    console.log('[DB] Creating tables...');
+    console.log('[DB] Running schema migration...');
     db.run(SCHEMA_SQL);
+    console.log('[DB] Schema applied');
 
     // Seed default tenants for each tier
     console.log('[DB] Seeding default tenants...');
     seedDefaultTenants();
 
-    console.log('[DB] Database initialized with default tenants');
+    console.log('[DB] Database fully initialized with default tenants');
     return db;
-  } catch (err) {
-    console.error('[DB] Initialization failed:', err);
-    throw err;
+  } catch (err: any) {
+    console.error('[DB] Initialization failed:', err?.message || err);
+    console.error('[DB] Stack:', err?.stack);
+    throw new Error(`Database initialization failed: ${err?.message || 'Unknown error'}`);
   }
 }
 
