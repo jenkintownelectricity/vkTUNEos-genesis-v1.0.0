@@ -25,9 +25,9 @@ export async function initDatabase(): Promise<Client> {
   try {
     console.log('[DB] Connecting to Turso database...');
 
-    // Use Turso URL and token from environment variables
-    const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
-    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
+    // Use Turso URL and token from environment variables (check multiple common names)
+    const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || process.env.LIBSQL_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
 
     if (!url) {
       console.log('[DB] No Turso URL found, using in-memory SQLite');
