@@ -152,7 +152,7 @@ export function getTenantUsage(tenant_id: string, period?: string): ResourceUsag
   }
   
   const cols = result[0].columns;
-  return result[0].values.map(row => ({
+  return result[0].values.map((row: any[]) => ({
     tenant_id: row[cols.indexOf('tenant_id')] as string,
     resource_type: row[cols.indexOf('resource_type')] as ResourceType,
     period: row[cols.indexOf('period')] as string,
@@ -280,7 +280,7 @@ export function getUsageHistory(tenant_id: string, months: number = 6): Resource
   }
   
   const cols = result[0].columns;
-  return result[0].values.map(row => ({
+  return result[0].values.map((row: any[]) => ({
     tenant_id: row[cols.indexOf('tenant_id')] as string,
     resource_type: row[cols.indexOf('resource_type')] as ResourceType,
     period: row[cols.indexOf('period')] as string,

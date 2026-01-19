@@ -198,7 +198,7 @@ export function listTenants(): Tenant[] {
     return [];
   }
   
-  return result[0].values.map(row => rowToTenant(result[0].columns, row));
+  return result[0].values.map((row: any[]) => rowToTenant(result[0].columns, row));
 }
 
 function rowToTenant(columns: string[], values: any[]): Tenant {
@@ -353,7 +353,7 @@ export function listCoordinates(options: ListCoordinatesOptions): CoordinateReco
     return [];
   }
   
-  return result[0].values.map(row => rowToCoordinateRecord(result[0].columns, row));
+  return result[0].values.map((row: any[]) => rowToCoordinateRecord(result[0].columns, row));
 }
 
 export interface UpdateCoordinateInput {
@@ -584,9 +584,9 @@ export function listAuditEvents(options: ListAuditEventsOptions): AuditEvent[] {
     return [];
   }
   
-  return result[0].values.map(row => {
+  return result[0].values.map((row: any[]) => {
     const obj: any = {};
-    result[0].columns.forEach((col, i) => obj[col] = row[i]);
+    result[0].columns.forEach((col: string, i: number) => obj[col] = row[i]);
     
     return {
       ...obj,

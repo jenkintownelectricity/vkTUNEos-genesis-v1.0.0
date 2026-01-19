@@ -18,6 +18,11 @@ import { WorkflowEngine } from '../integrations/workflows.js';
 
 const router = Router();
 
+// Helper to extract string from possibly array values (Express 5 typing)
+function asString(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] : (value || '');
+}
+
 // Apply middleware
 router.use(loadLicenseContext);
 router.use(rateLimitMiddleware);
@@ -188,8 +193,8 @@ router.get('/',
  * Get workflow by ID
  */
 router.get('/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
+  const id = asString(req.params.id);
+
   const workflow = WorkflowEngine.getWorkflow(id);
   
   if (!workflow) {
@@ -210,8 +215,8 @@ router.get('/:id', async (req: Request, res: Response) => {
  * Cancel a running workflow
  */
 router.post('/:id/cancel', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
+  const id = asString(req.params.id);
+
   const cancelled = WorkflowEngine.cancelWorkflow(id);
   
   if (!cancelled) {

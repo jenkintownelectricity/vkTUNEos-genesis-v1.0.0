@@ -31,6 +31,11 @@ import {
 
 const router = Router();
 
+// Helper to extract string from possibly array values (Express 5 typing)
+function asString(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] : (value || '');
+}
+
 // ============================================================================
 // VALIDATION SCHEMAS
 // ============================================================================
@@ -166,8 +171,8 @@ router.get('/', requireTenant, async (req: Request, res: Response) => {
  */
 router.get('/:id', requireTenant, async (req: Request, res: Response) => {
   const typedReq = req as RequestWithTenant;
-  const { id } = req.params;
-  
+  const id = asString(req.params.id);
+
   const coordinate = getCoordinate(id, typedReq.tenant_id);
   
   if (!coordinate) {
@@ -189,8 +194,8 @@ router.get('/:id', requireTenant, async (req: Request, res: Response) => {
  */
 router.get('/resolve/:path(*)', requireTenant, async (req: Request, res: Response) => {
   const typedReq = req as RequestWithTenant;
-  const { path } = req.params;
-  
+  const path = asString(req.params.path);
+
   const parsed = parseCoordinate(path);
   
   if (!parsed) {
@@ -290,7 +295,7 @@ router.post('/', requireTenant, auditMiddleware('create'), async (req: Request, 
 router.put('/:id', requireTenant, auditMiddleware('update'), async (req: Request, res: Response) => {
   try {
     const typedReq = req as RequestWithTenant;
-    const { id } = req.params;
+    const id = asString(req.params.id);
     const body = UpdateCoordinateBody.parse(req.body);
     
     // Check exists
@@ -359,8 +364,8 @@ router.put('/:id', requireTenant, auditMiddleware('update'), async (req: Request
  */
 router.delete('/:id', requireTenant, auditMiddleware('delete'), async (req: Request, res: Response) => {
   const typedReq = req as RequestWithTenant;
-  const { id } = req.params;
-  
+  const id = asString(req.params.id);
+
   // Check exists
   const existing = getCoordinate(id, typedReq.tenant_id);
   if (!existing) {

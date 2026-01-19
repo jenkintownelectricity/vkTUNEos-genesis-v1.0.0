@@ -16,7 +16,7 @@ import {
 } from '../core/licensing.js';
 import { rateLimitMiddleware } from '../core/ratelimit.js';
 import { trackResourceUsage, getResourceUsage } from '../core/resources.js';
-import { KitsAI, ElevenLabs, LALALAI, Suno, Udio, LANDR } from './providers.js';
+import { KitsAI, ElevenLabs, LALALAI, Suno, Udio, LANDR } from '../integrations/providers.js';
 
 const router = Router();
 
