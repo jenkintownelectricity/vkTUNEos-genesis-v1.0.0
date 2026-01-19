@@ -29,6 +29,7 @@ import integrationsRouter from './api/integrations.js';
 import workflowsRouter from './api/workflows.js';
 import usageRouter from './api/usage.js';
 import docsRouter from './api/docs.js';
+import projectsRouter from './api/projects.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -126,7 +127,8 @@ app.get('/api/v1', (req: Request, res: Response) => {
       integrations: '/api/v1/integrations',
       workflows: '/api/v1/workflows',
       usage: '/api/v1/usage',
-      docs: '/api/v1/docs'
+      docs: '/api/v1/docs',
+      projects: '/api/v1/projects'
     },
     features: {
       voice_cloning: ['KitsAI', 'ElevenLabs'],
@@ -154,6 +156,9 @@ app.use('/api/v1/integrations', integrationsRouter);
 app.use('/api/v1/workflows', workflowsRouter);
 app.use('/api/v1/usage', usageRouter);
 app.use('/api/v1/docs', docsRouter);
+
+// Session 3 Routes - Semantic Compression & Single-File Projects
+app.use('/api/v1/projects', projectsRouter);
 
 // ============================================================================
 // ERROR HANDLING
