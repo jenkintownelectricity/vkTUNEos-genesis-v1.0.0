@@ -1,27 +1,31 @@
-# vkTUNEos Music Kernel
+# vkTUNEos
 
 <p align="center">
-  <strong>Vector Authority v1.0 Compliant | ValidKernel Ecosystem</strong>
+  <img src="https://img.shields.io/badge/Version-1.0.0-purple?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/License-Multi--Tier-blue?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/Zero-Data_Collection-green?style=for-the-badge" alt="Privacy">
 </p>
 
 <p align="center">
-  AI Music Infrastructure with Deterministic Validation
+  <strong>Open-Source AI Media Production Platform</strong>
+  <br>
+  <em>Zero Data Collection • Self-Hosted • Offline Mode • Your Data Stays Yours</em>
 </p>
 
 ---
 
 ## Overview
 
-vkTUNEos is a **Music Kernel** within the ValidKernel ecosystem, providing structured data management for:
+vkTUNEos is a **complete, self-hosted, open-source AI media production platform** that combines:
 
-- 🎤 **AI Voice Cloning & Synthesis**
-- 🎵 **Audio Stem Separation**
-- 🎹 **Music Generation**
-- 🎙️ **Vocal Processing**
-- 🎚️ **Audio Production Workflows**
-- 📜 **Licensing & Rights Management**
+- 🎵 **Music Generation** with Stem Control
+- 🎤 **Voice Cloning** (10-second training)
+- 🎚️ **10-Stem Audio Separation**
+- 🎬 **AI Video Generation & Editing**
+- 📝 **Auto-Captions & Lip Sync**
+- 📦 **Coordinate-Based Asset Management**
 
-Built on the **Vector Authority v1.0** specification with 5-axis coordinate addressing and deterministic validation.
+**Philosophy**: Zero data collection. Your data stays yours. Works offline. One-file project format.
 
 ## Quick Start
 
@@ -38,130 +42,225 @@ npm run dev
 
 # Or use Docker
 docker-compose up -d
+
+# Download AI models for offline use
+./scripts/download-models.sh
+```
+
+Visit `http://localhost:3000` to access the vkTUNEos Studio.
+
+## Feature Tiers
+
+### Tier 1: Must-Have Features
+
+| Module | Feature | Backend |
+|--------|---------|---------|
+| Music Generation | Text-to-song with full control | MusicGen + AudioCraft |
+| Voice Cloning | Clone from 10 sec, real-time | RVC v3 + OpenVoice |
+| Stem Separation | 10-stem extraction | Demucs + UVR5 |
+| Video Generation | Text/image-to-video | Open-Sora + CogVideo |
+| Video Editing | Timeline + AI auto-edit | FFmpeg + Whisper |
+| Auto Captions | 99% accurate, styled | Whisper + custom CSS |
+
+### Tier 2: Differentiators (What Nobody Else Has)
+
+| Feature | Description | Why It Wins |
+|---------|-------------|-------------|
+| Stem Control in Generation | Generate music AND get separate stems | Udio/Suno can't do this |
+| Voice-to-Any-Voice Singing | Record yourself → output as any voice | RVC built-in |
+| Coordinate-Based Assets | Every asset tagged with 5-axis coordinates | O(1) lookup |
+| Zero Data Collection | Self-hosted = your data stays yours | Anti-ElevenLabs |
+| Offline Mode | Works without internet | No cloud dependency |
+| One-File Format (.vktune) | All assets in one portable file | No broken links |
+| Multi-Platform Export | Auto-resize for TikTok/YouTube/Insta | Saves hours |
+| Version Control | Git-like history for projects | Undo anything |
+
+### Tier 3: Killer Features
+
+| Feature | Description |
+|---------|-------------|
+| AI Collaborator Mode | "Make this chorus more energetic" → AI adjusts in real-time |
+| Voice Marketplace | Share/trade RVC models with consent verification |
+| Remix Rights Tracking | Coordinate system tracks every contribution |
+| Copyright Shield | Auto-detect copyrighted samples before publishing |
+| Mood-to-Music | Select emotion → generates matching soundtrack |
+| Lip Sync Video | Generate avatar lip-syncing to your audio |
+
+## API Reference
+
+### Studio Endpoints
+
+```
+POST /api/v1/studio/music/generate     # Text-to-music
+POST /api/v1/studio/voice/clone        # Clone voice from sample
+POST /api/v1/studio/voice/convert      # Voice-to-voice conversion
+POST /api/v1/studio/stems/separate     # 10-stem separation
+POST /api/v1/studio/video/generate     # Text/image to video
+POST /api/v1/studio/video/lipsync      # Lip-sync generation
+POST /api/v1/studio/video/captions     # Auto-captioning
+```
+
+### Killer Features Endpoints
+
+```
+POST /api/v1/killer/collaborator       # Natural language control
+POST /api/v1/killer/copyright/scan     # Copyright detection
+POST /api/v1/killer/mood/generate      # Mood-to-music
+GET  /api/v1/killer/marketplace        # Voice marketplace
+POST /api/v1/killer/rights/registry    # Rights tracking
+POST /api/v1/killer/versions/commit    # Version control
+```
+
+### Example: Generate Music
+
+```bash
+curl -X POST http://localhost:3000/api/v1/studio/music/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "energetic EDM track with heavy bass",
+    "duration": 120,
+    "with_stems": true
+  }'
+```
+
+### Example: Clone Voice
+
+```bash
+curl -X POST http://localhost:3000/api/v1/studio/voice/clone \
+  -H "Content-Type: application/json" \
+  -d '{
+    "audio": "<base64 audio sample>",
+    "name": "MyVoice",
+    "consent_verified": true
+  }'
+```
+
+### Example: AI Collaborator
+
+```bash
+curl -X POST http://localhost:3000/api/v1/killer/collaborator \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instruction": "Make the drums more punchy",
+    "context": {
+      "type": "music",
+      "tracks": [{ "id": "drums_1", "name": "Drums", "type": "drums" }]
+    },
+    "mode": "preview"
+  }'
 ```
 
 ## Architecture
 
-### Coordinate System
-
-All data is addressed via 5-axis coordinates:
+### Backend Stack
 
 ```
-Music.{Category}.{Domain}.{Entity}.{Attribute}.{State}
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          vkTUNEos BACKEND STACK                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
+│  │  MusicGen   │  │   RVC v3    │  │   Demucs    │  │ Open-Sora   │   │
+│  │ AudioCraft  │  │  OpenVoice  │  │    UVR5     │  │  CogVideo   │   │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘   │
+│         │                │                │                │           │
+│         └────────────────┴────────────────┴────────────────┘           │
+│                                   │                                     │
+│                        ┌──────────▼──────────┐                         │
+│                        │   vkTUNEos Core     │                         │
+│                        │   (Node/TypeScript) │                         │
+│                        └──────────┬──────────┘                         │
+│                                   │                                     │
+│         ┌─────────────────────────┼─────────────────────────┐          │
+│         │                         │                         │          │
+│  ┌──────▼──────┐  ┌───────────────▼───────────────┐  ┌──────▼──────┐  │
+│  │   FFmpeg    │  │   Vector Authority Engine     │  │   Whisper   │  │
+│  │   (Video)   │  │   (Coordinate Management)     │  │  (Speech)   │  │
+│  └─────────────┘  └───────────────────────────────┘  └─────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Example: `Music.VoiceCloning.Tool.KitsAI.Fidelity.Validated`
+### Coordinate System (5-Axis)
 
-### Axes
+All assets are tagged with 5-axis Vector Authority coordinates:
+
+```
+vkTUNEos.{Category}.{Domain}.{Entity}.{Attribute}.{State}
+```
+
+Example: `VoiceCloning.Model.RVC.MyVoice.Validated`
 
 | Axis | Name | Values |
 |------|------|--------|
-| L1 | Category | VoiceCloning, StemSeparation, MusicGeneration, VocalProcessing, AudioProduction, Licensing |
+| L1 | Category | VoiceCloning, StemSeparation, MusicGeneration, VideoEditing, ... |
 | L2 | Domain | Model, Tool, Workflow, Asset, Rights, Quality |
-| L3 | Entity | PascalCase identifier (e.g., KitsAI, ElevenLabs) |
-| L4 | Attribute | Fidelity, Latency, Languages, Formats, Pricing, API, Emotion, Range, Stems, Commercial |
+| L3 | Entity | PascalCase identifier |
+| L4 | Attribute | Fidelity, Latency, Languages, Formats, etc. |
 | L5 | State | Draft, Proposed, Validated, Deprecated, Archived |
 
-### Validation Rules
+## Model Requirements
 
-The Music Kernel enforces 10 domain-specific rules:
+| Model | Size | VRAM | Description |
+|-------|------|------|-------------|
+| MusicGen Large | ~3.3GB | 8GB | Best quality music generation |
+| RVC v3 | ~1.5GB | 4GB | Voice cloning (per model ~50MB) |
+| Demucs | ~800MB | 4GB | Stem separation |
+| Whisper Large v3 | ~3GB | 6GB | Speech recognition |
+| CogVideoX-5B | ~10GB | 24GB | Video generation (recommended) |
+| Wav2Lip | ~500MB | 4GB | Lip sync |
 
-| Code | Rule |
-|------|------|
-| MK.01 | Voice clones MUST include source consent flag |
-| MK.02 | Stem separation MUST specify neural network model |
-| MK.03 | Generated music MUST declare training data provenance |
-| MK.04 | Commercial use MUST have Licensing.Rights coordinate |
-| MK.05 | API responses MUST include latency measurement |
-| MK.06 | Emotion parameters MUST be numeric (0-100) |
-| MK.07 | Language codes MUST follow ISO 639-1 |
-| MK.08 | Audio formats MUST specify bit depth and sample rate |
-| MK.09 | Pricing MUST distinguish one-time vs subscription |
-| MK.10 | Quality scores MUST be reproducible benchmarks |
+**Total Download**: ~20GB
+**Minimum VRAM**: 8GB (CPU fallback available)
+**Recommended VRAM**: 24GB
 
-## API Reference
+## Deployment
 
-### Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/coordinates` | List coordinates |
-| POST | `/api/v1/coordinates` | Create coordinate |
-| GET | `/api/v1/coordinates/:id` | Get coordinate |
-| PUT | `/api/v1/coordinates/:id` | Update coordinate |
-| DELETE | `/api/v1/coordinates/:id` | Delete coordinate |
-| GET | `/api/v1/coordinates/resolve/:path` | Resolve by path |
-| POST | `/api/v1/coordinates/validate` | Validate without creating |
-| POST | `/api/v1/coordinates/bulk` | Bulk create |
-| GET | `/api/v1/tenants` | List tenants |
-| POST | `/api/v1/tenants` | Create tenant |
-| GET | `/api/v1/audit` | List audit events |
-| GET | `/api/v1/schema` | Get schema definition |
-
-### Headers
-
-| Header | Required | Description |
-|--------|----------|-------------|
-| X-Tenant-ID | Yes* | Tenant identifier |
-| X-User-ID | No | User identifier for audit |
-| X-Correlation-ID | No | Request correlation ID |
-
-*Required for coordinate and audit endpoints
-
-### Example: Create Coordinate
+### Docker
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/coordinates \
-  -H "Content-Type: application/json" \
-  -H "X-Tenant-ID: your-tenant-id" \
-  -d '{
-    "L1_category": "VoiceCloning",
-    "L2_domain": "Tool",
-    "L3_entity": "KitsAI",
-    "L4_attribute": "Fidelity",
-    "L5_state": "Validated",
-    "value": 8,
-    "metadata": {
-      "source_consent": true,
-      "benchmark_method": "MOS"
-    }
-  }'
+# Build and run
+docker-compose up -d
+
+# With GPU support
+docker-compose --profile gpu up -d
+
+# View logs
+docker-compose logs -f vktuneos
 ```
 
-## Multi-Tenancy
+### Environment Variables
 
-vkTUNEos supports three isolation levels:
+```bash
+# AI Backend Endpoints (optional - uses demo mode if not set)
+MUSICGEN_ENDPOINT=http://localhost:8001
+RVC_ENDPOINT=http://localhost:8002
+DEMUCS_ENDPOINT=http://localhost:8003
+WHISPER_ENDPOINT=http://localhost:8004
+COGVIDEO_ENDPOINT=http://localhost:8005
+LIPSYNC_ENDPOINT=http://localhost:8006
 
-| Level | Description | Use Case |
-|-------|-------------|----------|
-| Logical | Row-level security | Free, Premium |
-| Schema | Schema-per-tenant | Enterprise |
-| Database | Database-per-tenant | Enterprise+ |
+# Optional: Replicate API for cloud fallback
+REPLICATE_API_TOKEN=your_token_here
+```
 
-## Projections
+### Vercel
 
-Pre-defined views for common use cases:
-
-- **voice_library**: VoiceCloning → Model
-- **stem_splitter**: StemSeparation → Asset
-- **music_studio**: MusicGeneration → Workflow
-- **licensing_hub**: Licensing → *
-- **quality_dashboard**: * → Fidelity
-- **pricing_comparator**: * → Tool → Pricing
+```bash
+npx vercel deploy
+```
 
 ## License Tiers
 
 | Feature | Free | Premium | Enterprise |
 |---------|------|---------|------------|
-| Voice Clone Slots | 1 | 10 | Unlimited |
+| API Calls/Day | 100 | 5,000 | Unlimited |
+| Voice Clones | 1 | 10 | Unlimited |
 | Stem Separation | 2-stem | 10-stem | 10-stem |
-| Music Generation | 2 min | 30 min | Unlimited |
-| Multi-Tenant | No | Up to 10 | Unlimited |
-| White-Label | No | Yes | Yes |
-| API Rate Limit | 100/day | 5,000/day | Custom |
-| Support | Community | Priority Email | Dedicated |
-
-See [LICENSE](./LICENSE) for full terms.
+| Music Length | 2 min | 30 min | Unlimited |
+| Storage | 1 GB | 50 GB | 500 GB |
+| White-Label | ❌ | ✅ | ✅ |
+| SSO/SAML | ❌ | ❌ | ✅ |
 
 ## Development
 
@@ -171,6 +270,9 @@ npm test
 
 # Run tests in watch mode
 npm run test:watch
+
+# Type check
+npm run lint
 
 # Build for production
 npm run build
@@ -184,60 +286,23 @@ npm start
 ```
 vkTUNEos/
 ├── src/
-│   ├── core/           # Schema and validation
-│   │   ├── schema.ts   # Axis definitions
-│   │   └── validation.ts # MK.01-MK.10 rules
-│   ├── db/             # Database layer
-│   │   └── database.ts # SQLite + tenant isolation
+│   ├── core/           # Schema, validation, version control
+│   ├── db/             # Database layer (SQLite)
 │   ├── api/            # REST endpoints
-│   │   ├── coordinates.ts
-│   │   ├── tenants.ts
-│   │   ├── audit.ts
-│   │   └── schema.ts
+│   ├── ai/             # AI module integrations
+│   ├── marketplace/    # Voice marketplace
 │   └── index.ts        # Server entry point
+├── frontend/           # React web UI
+├── scripts/            # Utility scripts
 ├── tests/              # Test suites
-├── config/             # Configuration files
-├── docs/               # Documentation
-└── sessions/           # Build session handoffs
+└── docker-compose.yml  # Docker configuration
 ```
-
-## Deployment
-
-### Docker
-
-```bash
-docker build -t vktuneos .
-docker run -p 3000:3000 vktuneos
-```
-
-### Vercel
-
-```bash
-npx vercel deploy
-```
-
-### Manual
-
-```bash
-npm run build
-NODE_ENV=production npm start
-```
-
-## Session-Based Development
-
-This project follows a 3-session build strategy:
-
-| Session | Focus | Status |
-|---------|-------|--------|
-| 1 | Foundation + Schema | ✅ Complete |
-| 2 | Core Features + API | 🔄 Pending |
-| 3 | UI + Themes + Polish | ⏳ Pending |
 
 ## Links
 
 - **Domain**: [vkTUNEos.com](https://vktuneos.com)
+- **API Docs**: [localhost:3000/api/v1/docs](http://localhost:3000/api/v1/docs)
 - **Parent Authority**: [VectorAuthority.com](https://vectorauthority.com)
-- **ValidKernel**: [ValidKernel.com](https://validkernel.com)
 - **GitHub**: [BuildingSystemsAI/vkTUNEos](https://github.com/BuildingSystemsAI/vkTUNEos)
 
 ## Authority
@@ -246,12 +311,15 @@ This project follows a 3-session build strategy:
 ISSUED_BY: Armand Lefebvre
 AUTHORITY: L0 Canonical
 DOMAIN: vkTUNEos.com
-PARENT: VectorAuthority.com
-VERSION: 1.0
+PARENT: VectorAuthority.com / SuccinctAuthority.com
+VERSION: 1.0.0
+COMMAND_ID: VK-FULLSTACK-2026-001
 ```
 
 ---
 
 <p align="center">
-  <sub>Built with ❤️ by Lefebvre Design Solutions LLC</sub>
+  <strong>vkTUNEos — The Open-Source AI Media Production Platform</strong>
+  <br>
+  <em>Zero Data Collection • Full Control • Your Music, Your Way</em>
 </p>

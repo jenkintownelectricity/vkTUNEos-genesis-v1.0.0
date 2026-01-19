@@ -1,25 +1,86 @@
-version: '3.8'
+# vkTUNEos Full Stack Docker Compose
+# Open-Source AI Media Production Platform
+#
+# Usage:
+#   docker-compose up -d              # Start API only
+#   docker-compose --profile gpu up   # With GPU backends
+#   docker-compose --profile all up   # Full stack
+#
+# Domain: vkTUNEos.com
+# Version: 1.0.0
+
+version: '3.9'
 
 services:
+  # ==========================================================================
+  # VKTUNEOS API (Main Application)
+  # ==========================================================================
   vktuneos:
     build: .
-    container_name: vktuneos-music-kernel
+    image: vktuneos/api:1.0.0
+    container_name: vktuneos-api
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
       - CORS_ORIGIN=*
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
+      # AI Backend Endpoints (uses demo mode if not set)
+      - MUSICGEN_ENDPOINT=${MUSICGEN_ENDPOINT:-}
+      - RVC_ENDPOINT=${RVC_ENDPOINT:-}
+      - DEMUCS_ENDPOINT=${DEMUCS_ENDPOINT:-}
+      - WHISPER_ENDPOINT=${WHISPER_ENDPOINT:-}
+      - COGVIDEO_ENDPOINT=${COGVIDEO_ENDPOINT:-}
+      - LIPSYNC_ENDPOINT=${LIPSYNC_ENDPOINT:-}
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
     volumes:
       - vktuneos-data:/app/data
+      - vktuneos-outputs:/app/outputs
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - vktuneos-network
+
+  # ==========================================================================
+  # AI BACKENDS (GPU Profile)
+  # ==========================================================================
+
+  # Whisper - Speech Recognition & Captions
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: vktuneos-whisper
+    profiles: ["gpu", "all"]
+    ports:
+      - "8004:9000"
+    environment:
+      - ASR_MODEL=large-v3
+      - ASR_ENGINE=faster_whisper
+    volumes:
+      - models-whisper:/root/.cache/whisper
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - vktuneos-network
+
+networks:
+  vktuneos-network:
+    driver: bridge
 
 volumes:
   vktuneos-data:
+    driver: local
+  vktuneos-outputs:
+    driver: local
+  models-whisper:
     driver: local
