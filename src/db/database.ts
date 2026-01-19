@@ -24,12 +24,105 @@ let db: SqlJsDatabase | null = null;
 export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
   const SQL = await initSqlJs();
   db = new SQL.Database();
-  
+
   // Create tables
   db.run(SCHEMA_SQL);
-  
-  console.log('[DB] Database initialized');
+
+  // Seed default tenants for each tier
+  seedDefaultTenants();
+
+  console.log('[DB] Database initialized with default tenants');
   return db;
+}
+
+/**
+ * Seed default tenants for each tier level
+ * L0 AUTHORITATIVE: Preload FREE, PREMIUM, and ENTERPRISE tier tenants
+ */
+function seedDefaultTenants(): void {
+  const database = getDatabase();
+  const now = new Date().toISOString();
+
+  const defaultTenants = [
+    {
+      id: 'tenant-free-default',
+      name: 'Free Tier Demo',
+      slug: 'free-demo',
+      tier: 'free',
+      config: { description: 'Default Free tier tenant for testing basic features' }
+    },
+    {
+      id: 'tenant-premium-default',
+      name: 'Premium Tier Demo',
+      slug: 'premium-demo',
+      tier: 'premium',
+      config: { description: 'Default Premium tier tenant with workflow access' }
+    },
+    {
+      id: 'tenant-enterprise-default',
+      name: 'Enterprise Tier Demo',
+      slug: 'enterprise-demo',
+      tier: 'enterprise',
+      config: { description: 'Default Enterprise tier tenant with all features' }
+    }
+  ];
+
+  for (const tenant of defaultTenants) {
+    database.run(`
+      INSERT OR IGNORE INTO tenants (id, name, slug, tier, config, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [
+      tenant.id,
+      tenant.name,
+      tenant.slug,
+      tenant.tier,
+      JSON.stringify(tenant.config),
+      now,
+      now
+    ]);
+  }
+
+  // Seed sample coordinates for each tenant
+  const sampleCoordinates = [
+    // Voice Cloning coordinates
+    { L1: 'VoiceCloning', L2: 'Tool', L3: 'ElevenLabs', L4: 'Languages', L5: 'Validated', value: '32', metadata: { languages: ['en', 'es', 'fr', 'de', 'it', 'pt', 'pl', 'hi', 'ar', 'zh'] } },
+    { L1: 'VoiceCloning', L2: 'Tool', L3: 'KitsAI', L4: 'Fidelity', L5: 'Validated', value: '8.5', metadata: { source_consent: true, neural_network_model: 'kits-v2' } },
+    { L1: 'VoiceCloning', L2: 'Model', L3: 'InstantClone', L4: 'Latency', L5: 'Validated', value: '15', metadata: { unit: 'seconds' } },
+    // Stem Separation coordinates
+    { L1: 'StemSeparation', L2: 'Model', L3: 'Phoenix', L4: 'Fidelity', L5: 'Validated', value: '9.2', metadata: { stems: 10 } },
+    { L1: 'StemSeparation', L2: 'Tool', L3: 'LALALAI', L4: 'Stems', L5: 'Validated', value: '10', metadata: { formats: ['wav', 'mp3', 'flac'] } },
+    // Music Generation coordinates
+    { L1: 'MusicGeneration', L2: 'Tool', L3: 'Suno', L4: 'Pricing', L5: 'Validated', value: '$0.02/call', metadata: { pricing_model: 'subscription', billing_period: 'monthly' } },
+    { L1: 'MusicGeneration', L2: 'Model', L3: 'SunoV5', L4: 'Fidelity', L5: 'Validated', value: '9.0', metadata: { max_duration: 300 } },
+    // Audio Production coordinates
+    { L1: 'AudioProduction', L2: 'Tool', L3: 'LANDR', L4: 'Pricing', L5: 'Validated', value: '$4.99/track', metadata: { pricing_model: 'subscription' } },
+    // Licensing coordinates
+    { L1: 'Licensing', L2: 'Rights', L3: 'RoyaltyFree', L4: 'Commercial', L5: 'Validated', value: 'true', metadata: { attribution_required: false } },
+  ];
+
+  for (const tenant of defaultTenants) {
+    for (const coord of sampleCoordinates) {
+      const coordId = `${tenant.id}-${coord.L1}-${coord.L3}-${coord.L4}`.toLowerCase();
+      database.run(`
+        INSERT OR IGNORE INTO coordinates (id, tenant_id, L1_category, L2_domain, L3_entity, L4_attribute, L5_state, value, metadata, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        coordId,
+        tenant.id,
+        coord.L1,
+        coord.L2,
+        coord.L3,
+        coord.L4,
+        coord.L5,
+        coord.value,
+        JSON.stringify(coord.metadata),
+        now,
+        now
+      ]);
+    }
+  }
+
+  console.log('[DB] Seeded 3 default tenants (free, premium, enterprise) with sample coordinates');
 }
 
 export function getDatabase(): SqlJsDatabase {
