@@ -49,6 +49,47 @@ docker-compose up -d
 
 Visit `http://localhost:3000` to access the vkTUNEos Studio.
 
+## Killer UI Dashboard
+
+The **vkTUNEos Killer UI** is a production-ready single-file React dashboard with all 9 pages fully functional.
+
+### Opening the Dashboard
+
+```bash
+# Option 1: Direct browser open
+open dashboard.html
+
+# Option 2: Via local server
+npx serve .
+# Visit http://localhost:3000/dashboard.html
+
+# Option 3: Vercel deployment (auto-configured)
+npx vercel deploy
+```
+
+### Dashboard Pages
+
+| Page | Description | Features |
+|------|-------------|----------|
+| **Dashboard** | Overview & stats | Stats cards, quick actions, activity feed |
+| **Music Studio** | AI music generation | Prompt input, duration/tempo/key controls, stem mixer |
+| **Voice Lab** | Voice cloning | Clone, Library, Marketplace tabs |
+| **Video Studio** | Video creation | Timeline editor, captions, multi-platform export |
+| **Coordinates** | Asset browser | Tree navigation, search, filters, status badges |
+| **Workflows** | Pipeline editor | Node palette, canvas, saved workflows |
+| **Tenants** | Multi-tenant mgmt | CRUD table, tier badges, modal forms |
+| **Audit Log** | Activity tracking | Filters, CSV export, timestamps |
+| **Killer Features** | Advanced tools | AI Collaborator, Copyright Shield, Mood Pad, Remix Rights |
+
+### UI Technology Stack
+
+- **React 18** with Babel standalone (no build step)
+- **Tailwind CSS** via CDN
+- **Custom design tokens** (CSS variables)
+- **Zustand-style store** with localStorage persistence
+- **Toast notifications** throughout
+- **Responsive layout** (mobile/tablet/desktop)
+
 ## Feature Tiers
 
 ### Tier 1: Must-Have Features
