@@ -31,6 +31,7 @@ import usageRouter from './api/usage.js';
 import docsRouter from './api/docs.js';
 import projectsRouter from './api/projects.js';
 import studioRouter from './api/studio.js';
+import killerFeaturesRouter from './api/killer-features.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -87,12 +88,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Serve static files (dashboard.html)
+// Serve static files
 app.use(express.static(path.join(__dirname, '..')));
+app.use('/app', express.static(path.join(__dirname, '..', 'frontend')));
 
-// Serve dashboard at root
+// Serve frontend at root
 app.get('/', (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, '..', 'dashboard.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
 // ============================================================================
@@ -115,29 +117,57 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.get('/api/v1', (req: Request, res: Response) => {
   res.json({
-    name: 'vkTUNEos Music Kernel API',
+    name: 'vkTUNEos Full Stack API',
     version: '1.0.0',
     domain: 'vkTUNEos.com',
     parent_authority: 'VectorAuthority.com',
-    session: 2,
+    tagline: 'Open-Source AI Media Production Platform',
+    philosophy: 'Zero data collection. Your data stays yours. Works offline.',
+    session: 5,
     endpoints: {
+      // Core
       coordinates: '/api/v1/coordinates',
       tenants: '/api/v1/tenants',
       audit: '/api/v1/audit',
       schema: '/api/v1/schema',
+      // Integrations
       integrations: '/api/v1/integrations',
       workflows: '/api/v1/workflows',
       usage: '/api/v1/usage',
       docs: '/api/v1/docs',
-      projects: '/api/v1/projects'
+      // Projects
+      projects: '/api/v1/projects',
+      // AI Studio
+      studio: '/api/v1/studio',
+      // Killer Features
+      killer: '/api/v1/killer'
     },
-    features: {
-      voice_cloning: ['KitsAI', 'ElevenLabs'],
-      stem_separation: ['LALAL.AI'],
-      music_generation: ['Suno', 'Udio'],
-      audio_production: ['LANDR'],
-      workflows: ['text-to-music', 'lyrics-to-song', 'remix']
+    tier1_features: {
+      music_generation: ['MusicGen', 'AudioCraft'],
+      voice_cloning: ['RVC v3', 'OpenVoice'],
+      stem_separation: ['Demucs', 'UVR5', '10-stem'],
+      video_generation: ['Open-Sora', 'CogVideo'],
+      video_editing: ['FFmpeg', 'Auto-cut'],
+      auto_captions: ['Whisper', 'Styled CSS']
     },
+    tier2_differentiators: [
+      'Stem control in generation',
+      'Voice-to-any-voice singing',
+      'Coordinate-based assets',
+      'Zero data collection',
+      'Offline mode',
+      'One-file .vktune format',
+      'Multi-platform export',
+      'Git-like version control'
+    ],
+    tier3_killers: [
+      'AI Collaborator (natural language control)',
+      'Voice Marketplace',
+      'Remix Rights Tracking',
+      'Copyright Shield',
+      'Mood-to-Music',
+      'Lip Sync Video'
+    ],
     tiers: ['free', 'premium', 'enterprise']
   });
 });
@@ -163,6 +193,9 @@ app.use('/api/v1/projects', projectsRouter);
 
 // Session 4 Routes - AI Studio (Music, Voice, Stems, Video)
 app.use('/api/v1/studio', studioRouter);
+
+// Session 5 Routes - Killer Features (Tier 3)
+app.use('/api/v1/killer', killerFeaturesRouter);
 
 // ============================================================================
 // ERROR HANDLING
