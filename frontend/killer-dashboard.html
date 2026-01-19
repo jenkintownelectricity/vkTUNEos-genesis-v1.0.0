@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vkTUNEos | AI Music Production Platform</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2306b6d4' rx='20' width='100' height='100'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white'>vK</text></svg>">
+
+  <!-- React 18 -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Axios -->
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-void: #0a0a0f;
+      --bg-surface: #111118;
+      --bg-card: #22222e;
+      --bg-elevated: #2a2a38;
+      --text-primary: #f0f0f5;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --primary-400: #22d3ee;
+      --primary-500: #06b6d4;
+      --primary-600: #0891b2;
+      --accent-400: #f472b6;
+      --accent-500: #ec4899;
+      --accent-600: #db2777;
+      --success-500: #22c55e;
+      --warning-500: #eab308;
+      --error-500: #ef4444;
+      --border-subtle: rgba(255,255,255,0.08);
+      --border-default: rgba(255,255,255,0.12);
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-body); background: var(--bg-void); color: var(--text-primary); overflow-x: hidden; min-height: 100vh; }
+    .font-display { font-family: var(--font-display); }
+    .font-mono { font-family: var(--font-mono); }
+    .mesh-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse 80% 50% at 20% 40%, rgba(6,182,212,0.12), transparent), radial-gradient(ellipse 60% 40% at 80% 20%, rgba(236,72,153,0.08), transparent), radial-gradient(ellipse 50% 60% at 60% 80%, rgba(34,211,238,0.06), transparent), var(--bg-void); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-fade-up { animation: fadeUp 0.4s ease-out forwards; }
+    .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-surface); }
+    ::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    .gradient-text { background: linear-gradient(135deg, var(--primary-400), var(--accent-500)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: white; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; background: white; border-radius: 50%; cursor: pointer; border: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } = React;
+
+    // ========================================================================
+    // STORE
+    // ========================================================================
+    const createStore = (initialState) => {
+      let state = initialState;
+      const listeners = new Set();
+      const getState = () => state;
+      const setState = (partial) => {
+        const nextState = typeof partial === 'function' ? partial(state) : partial;
+        state = { ...state, ...nextState };
+        listeners.forEach((listener) => listener(state));
+        try { localStorage.setItem('vktuneos-store', JSON.stringify(state)); } catch (e) {}
+      };
+      const subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener); };
+      try { const p = localStorage.getItem('vktuneos-store'); if (p) state = { ...state, ...JSON.parse(p) }; } catch (e) {}
+      return { getState, setState, subscribe };
+    };
+
+    const store = createStore({
+      user: { name: 'Demo User', role: 'Creator', email: 'demo@vktuneos.com' },
+      token: 'demo-token',
+      currentTenant: { id: 't1', name: 'Demo Studio' },
+      sidebarCollapsed: false,
+      currentPage: 'dashboard',
+      searchQuery: '',
+      notifications: [
+        { id: 1, title: 'Welcome to vkTUNEos!', message: 'Start creating amazing music', timestamp: new Date().toISOString(), read: false },
+        { id: 2, title: 'AI Collaborator Ready', message: 'Your assistant is available', timestamp: new Date().toISOString(), read: false }
+      ]
+    });
+
+    const actions = {
+      toggleSidebar: () => store.setState((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+      setPage: (page) => store.setState({ currentPage: page }),
+      setSearchQuery: (query) => store.setState({ searchQuery: query }),
+      markNotificationRead: (id) => store.setState((s) => ({ notifications: s.notifications.map((n) => n.id === id ? { ...n, read: true } : n) }))
+    };
+
+    const useStore = () => {
+      const [state, setState] = useState(store.getState());
+      useEffect(() => store.subscribe(setState), []);
+      return { ...state, ...actions };
+    };
+
+    // ========================================================================
+    // ICON COMPONENT
+    // ========================================================================
+    const Icon = ({ name, size = 20 }) => {
+      const paths = {
+        home: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>,
+        music: <><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></>,
+        mic: <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></>,
+        video: <><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></>,
+        database: <><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></>,
+        workflow: <><rect width="8" height="4" x="3" y="3" rx="1"/><rect width="8" height="4" x="13" y="17" rx="1"/><path d="M7 7v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V7"/></>,
+        users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+        shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
+        sparkles: <><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></>,
+        settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+        search: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+        bell: <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>,
+        chevronLeft: <path d="m15 18-6-6 6-6"/>,
+        chevronRight: <path d="m9 18 6-6-6-6"/>,
+        chevronDown: <path d="m6 9 6 6 6-6"/>,
+        x: <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+        user: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+        logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
+        activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
+        refresh: <><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></>
+      };
+      return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{paths[name] || paths.home}</svg>;
+    };
+
+    // ========================================================================
+    // SIDEBAR
+    // ========================================================================
+    const Sidebar = ({ collapsed, onToggle, currentPage, onPageChange }) => {
+      const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'home' },
+        { id: 'music', label: 'Music Studio', icon: 'music' },
+        { id: 'voice', label: 'Voice Lab', icon: 'mic' },
+        { id: 'video', label: 'Video Studio', icon: 'video' },
+        { id: 'coordinates', label: 'Coordinates', icon: 'database' },
+        { id: 'workflows', label: 'Workflows', icon: 'workflow' },
+        { id: 'tenants', label: 'Tenants', icon: 'users' },
+        { id: 'audit', label: 'Audit Log', icon: 'shield' },
+        { id: 'killer', label: 'Killer Features', icon: 'sparkles' }
+      ];
+
+      return (
+        <aside className={`fixed left-0 top-0 h-full z-50 transition-all duration-300 ${collapsed ? 'w-20' : 'w-64'}`} style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-subtle)' }}>
+          <div className="h-16 flex items-center justify-between px-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-lg" style={{ background: 'linear-gradient(135deg, var(--primary-500), var(--accent-500))', color: 'white' }}>vK</div>
+              {!collapsed && <div><div className="font-display font-semibold text-sm">vkTUNEos</div><div className="text-xs" style={{ color: 'var(--text-muted)' }}>Music Kernel v1.0</div></div>}
+            </div>
+            <button onClick={onToggle} className="p-2 rounded-lg transition-colors" style={{ color: 'var(--text-secondary)' }}><Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={18} /></button>
+          </div>
+          <nav className="p-3 flex flex-col gap-1">
+            {navItems.map((item) => {
+              const isActive = currentPage === item.id;
+              return (
+                <button key={item.id} onClick={() => onPageChange(item.id)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all w-full text-left ${collapsed ? 'justify-center' : ''}`}
+                  style={{ background: isActive ? 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(236,72,153,0.1))' : 'transparent', color: isActive ? 'var(--primary-400)' : 'var(--text-secondary)', border: isActive ? '1px solid rgba(6,182,212,0.3)' : '1px solid transparent' }}
+                  title={collapsed ? item.label : ''}>
+                  <Icon name={item.icon} size={20} />
+                  {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="absolute bottom-0 left-0 right-0 p-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <button className={`flex items-center gap-3 px-3 py-2.5 rounded-xl w-full ${collapsed ? 'justify-center' : ''}`} style={{ color: 'var(--text-secondary)' }}>
+              <Icon name="settings" size={20} />
+              {!collapsed && <span className="font-medium text-sm">Settings</span>}
+            </button>
+          </div>
+        </aside>
+      );
+    };
+
+    // ========================================================================
+    // HEADER
+    // ========================================================================
+    const Header = ({ searchQuery, onSearchChange, notifications, onNotificationClick, user }) => {
+      const [showNotifications, setShowNotifications] = useState(false);
+      const [showUserMenu, setShowUserMenu] = useState(false);
+      const unreadCount = notifications.filter(n => !n.read).length;
+
+      return (
+        <header className="h-16 flex items-center justify-between px-6" style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="relative flex-1 max-w-md">
+            <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <input type="text" placeholder="Search assets, projects, workflows..." value={searchQuery} onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2.5 rounded-xl" style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+                <Icon name="bell" size={20} />
+                {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center" style={{ background: 'var(--accent-500)', color: 'white' }}>{unreadCount}</span>}
+              </button>
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl shadow-lg animate-fade-up" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                  <div className="p-4 font-semibold" style={{ borderBottom: '1px solid var(--border-subtle)' }}>Notifications</div>
+                  {notifications.map((n) => (
+                    <div key={n.id} onClick={() => onNotificationClick(n.id)} className="p-4 cursor-pointer" style={{ background: n.read ? 'transparent' : 'rgba(6,182,212,0.05)', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <div className="font-medium text-sm">{n.title}</div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{n.message}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-3 p-2 rounded-xl" style={{ background: 'var(--bg-card)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center font-semibold" style={{ background: 'linear-gradient(135deg, var(--primary-500), var(--accent-500))', color: 'white' }}>{user?.name?.[0] || 'U'}</div>
+                <div className="text-left hidden sm:block"><div className="text-sm font-medium">{user?.name}</div><div className="text-xs" style={{ color: 'var(--text-muted)' }}>{user?.role}</div></div>
+                <Icon name="chevronDown" size={16} style={{ color: 'var(--text-muted)' }} />
+              </button>
+              {showUserMenu && (
+                <div className="absolute right-0 top-14 w-48 rounded-xl shadow-lg overflow-hidden animate-fade-up" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                  <button className="w-full flex items-center gap-3 px-4 py-3" style={{ color: 'var(--text-secondary)' }}><Icon name="user" size={18} /><span className="text-sm">Profile</span></button>
+                  <button className="w-full flex items-center gap-3 px-4 py-3" style={{ color: 'var(--text-secondary)' }}><Icon name="settings" size={18} /><span className="text-sm">Settings</span></button>
+                  <div style={{ borderTop: '1px solid var(--border-subtle)' }}><button className="w-full flex items-center gap-3 px-4 py-3" style={{ color: 'var(--error-500)' }}><Icon name="logout" size={18} /><span className="text-sm">Sign out</span></button></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+      );
+    };
+
+    // ========================================================================
+    // DASHBOARD PAGE
+    // ========================================================================
+    const DashboardPage = () => {
+      const st = useStore();
+      const stats = [{ label: 'Total Tracks', value: '1,247', icon: 'music' }, { label: 'Voice Models', value: '23', icon: 'mic' }, { label: 'Workflows', value: '8', icon: 'workflow' }, { label: 'API Calls', value: '45.2K', icon: 'activity' }];
+      const quickActions = [{ label: 'Generate Music', page: 'music', gradient: 'linear-gradient(135deg, #06b6d4, #0891b2)' }, { label: 'Clone Voice', page: 'voice', gradient: 'linear-gradient(135deg, #ec4899, #db2777)' }, { label: 'Create Video', page: 'video', gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }, { label: 'Run Workflow', page: 'workflows', gradient: 'linear-gradient(135deg, #22c55e, #16a34a)' }];
+      const activity = [{ id: 1, action: 'Generated track', title: 'Summer Vibes', time: '2 min ago' }, { id: 2, action: 'Cloned voice', title: 'Sarah Model', time: '15 min ago' }, { id: 3, action: 'Exported video', title: 'Music Video', time: '1 hour ago' }];
+
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-8">
+            <div><h1 className="text-2xl font-display font-bold">Dashboard</h1><p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Welcome back! Here's what's happening.</p></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {stats.map((s, i) => (
+              <div key={i} className="p-5 rounded-xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{s.label}</p>
+                <p className="text-2xl font-display font-bold">{s.value}</p>
+              </div>
+            ))}
+          </div>
+          <h2 className="text-lg font-display font-semibold mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {quickActions.map((a, i) => (
+              <button key={i} onClick={() => st.setPage(a.page)} className="p-5 rounded-xl text-left text-white" style={{ background: a.gradient }}>
+                <p className="font-semibold">{a.label}</p>
+              </button>
+            ))}
+          </div>
+          <h2 className="text-lg font-display font-semibold mb-4">Recent Activity</h2>
+          <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+            {activity.map((item, i) => (
+              <div key={item.id} className="flex items-center gap-4 p-4" style={{ borderBottom: i < activity.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-elevated)', color: 'var(--primary-400)' }}><Icon name="music" size={18} /></div>
+                <div className="flex-1"><p className="text-sm font-medium">{item.action}: <span style={{ color: 'var(--primary-400)' }}>{item.title}</span></p><p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.time}</p></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // ========================================================================
+    // PLACEHOLDER PAGES
+    // ========================================================================
+    const PlaceholderPage = ({ title, description }) => (
+      <div>
+        <h1 className="text-2xl font-display font-bold mb-2">{title}</h1>
+        <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>{description}</p>
+        <div className="rounded-xl p-12 text-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(236,72,153,0.1))' }}>
+            <Icon name="sparkles" size={32} style={{ color: 'var(--primary-400)' }} />
+          </div>
+          <p className="text-lg font-semibold mb-2">Coming Soon</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>This feature is fully built in the component files.</p>
+          <p className="text-xs mt-4 font-mono" style={{ color: 'var(--text-muted)' }}>See: pages-part1.jsx, pages-part2.jsx</p>
+        </div>
+      </div>
+    );
+
+    const MusicStudioPage = () => <PlaceholderPage title="Music Studio" description="Generate, edit, and export AI-powered music" />;
+    const VoiceLabPage = () => <PlaceholderPage title="Voice Lab" description="Clone, manage, and discover voice models" />;
+    const VideoStudioPage = () => <PlaceholderPage title="Video Studio" description="Create, edit, and export AI-powered videos" />;
+    const CoordinatesPage = () => <PlaceholderPage title="Coordinates" description="Browse the AI Music Coordinate System" />;
+    const WorkflowsPage = () => <PlaceholderPage title="Workflows" description="Create and manage automation pipelines" />;
+    const TenantsPage = () => <PlaceholderPage title="Tenants" description="Manage multi-tenant organizations" />;
+    const AuditLogPage = () => <PlaceholderPage title="Audit Log" description="Track all system activities" />;
+    const KillerFeaturesPage = () => <PlaceholderPage title="Killer Features" description="AI Collaborator, Copyright Shield, Mood Pad, Remix Rights" />;
+
+    // ========================================================================
+    // MAIN APP
+    // ========================================================================
+    const App = () => {
+      const st = useStore();
+
+      const renderPage = () => {
+        switch (st.currentPage) {
+          case 'dashboard': return <DashboardPage />;
+          case 'music': return <MusicStudioPage />;
+          case 'voice': return <VoiceLabPage />;
+          case 'video': return <VideoStudioPage />;
+          case 'coordinates': return <CoordinatesPage />;
+          case 'workflows': return <WorkflowsPage />;
+          case 'tenants': return <TenantsPage />;
+          case 'audit': return <AuditLogPage />;
+          case 'killer': return <KillerFeaturesPage />;
+          default: return <DashboardPage />;
+        }
+      };
+
+      return (
+        <div className="min-h-screen" style={{ background: 'var(--bg-void)' }}>
+          <div className="mesh-bg" />
+          <Sidebar collapsed={st.sidebarCollapsed} onToggle={st.toggleSidebar} currentPage={st.currentPage} onPageChange={st.setPage} />
+          <div className="fixed top-0 right-0 z-40 transition-all duration-300" style={{ left: st.sidebarCollapsed ? '80px' : '256px' }}>
+            <Header searchQuery={st.searchQuery} onSearchChange={st.setSearchQuery} notifications={st.notifications} onNotificationClick={st.markNotificationRead} user={st.user} />
+          </div>
+          <main className="min-h-screen transition-all duration-300" style={{ marginLeft: st.sidebarCollapsed ? '80px' : '256px', paddingTop: '64px' }}>
+            <div className="p-6">{renderPage()}</div>
+          </main>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    console.log('=== vkTUNEos KILLER UI LOADED ===');
+    console.log('All 9 pages accessible via sidebar');
+    console.log('Full implementations in: foundation.jsx, components.jsx, media.jsx, pages-part1.jsx, pages-part2.jsx');
+  </script>
+</body>
+</html>
