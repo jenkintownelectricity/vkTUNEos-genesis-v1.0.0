@@ -55,8 +55,8 @@ router.get('/', async (req: Request, res: Response) => {
  * Get a single tenant by ID or slug
  */
 router.get('/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
   // Try by ID first, then by slug
   let tenant = getTenant(id);
   if (!tenant) {
