@@ -37,24 +37,24 @@ router.use(loadLicenseContext);
  */
 router.get('/', async (req: Request, res: Response) => {
   const typedReq = req as RequestWithLicense;
-  
+
   if (!typedReq.license || typedReq.license.tenant_id === 'anonymous') {
     return res.status(401).json({
       error: 'Tenant required',
       code: 'TENANT_REQUIRED'
     });
   }
-  
-  const summary = getUsageSummary(
+
+  const summary = await getUsageSummary(
     typedReq.license.tenant_id,
     typedReq.license.tier
   );
-  
+
   const rateLimit = getRateLimitStatus(
     typedReq.license.tenant_id,
     typedReq.license.tier
   );
-  
+
   res.json({
     success: true,
     data: {
@@ -70,20 +70,20 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/history', async (req: Request, res: Response) => {
   const typedReq = req as RequestWithLicense;
-  
+
   if (!typedReq.license || typedReq.license.tenant_id === 'anonymous') {
     return res.status(401).json({
       error: 'Tenant required',
       code: 'TENANT_REQUIRED'
     });
   }
-  
+
   const months = parseInt(req.query.months as string) || 6;
-  const history = getUsageHistory(
+  const history = await getUsageHistory(
     typedReq.license.tenant_id,
     Math.min(months, 12)
   );
-  
+
   res.json({
     success: true,
     data: history

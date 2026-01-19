@@ -55,11 +55,11 @@ router.post('/voice/clone',
     try {
       const typedReq = req as RequestWithLicense;
       const body = CreateVoiceCloneBody.parse(req.body);
-      
+
       // Check voice clone limit
-      const usage = getResourceUsage(typedReq.license!.tenant_id, 'voice_clones');
+      const usage = await getResourceUsage(typedReq.license!.tenant_id, 'voice_clones');
       const limit = typedReq.license!.limits.voice_clone_slots;
-      
+
       if (limit !== -1 && (usage?.count || 0) >= limit) {
         return res.status(429).json({
           error: 'Voice clone limit reached',
