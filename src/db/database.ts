@@ -31,9 +31,10 @@ export async function initDatabase(): Promise<Client> {
 
     if (!url) {
       console.log('[DB] No Turso URL found, using in-memory SQLite');
-      // Fallback to local file for development
+      // Use in-memory database for serverless (no filesystem access)
+      // Note: Data will not persist between invocations without Turso
       db = createClient({
-        url: 'file:local.db'
+        url: ':memory:'
       });
     } else {
       console.log('[DB] Using Turso URL:', url);
