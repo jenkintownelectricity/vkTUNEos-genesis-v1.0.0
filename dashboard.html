@@ -764,19 +764,30 @@
     // Tenants Page
     const TenantsPage = ({ data, loading, onRefresh, setToast }) => {
       const [showModal, setShowModal] = useState(false);
+      const [creating, setCreating] = useState(false);
       const [form, setForm] = useState({ name: '', slug: '', tier: 'free', contact_email: '' });
 
       const handleCreate = async () => {
+        if (!form.name || !form.slug) {
+          setToast({ type: 'error', message: 'Name and slug are required' });
+          return;
+        }
+        setCreating(true);
         try {
           setToast({ type: 'info', message: 'Creating tenant...' });
+          console.log('Creating tenant with:', form);
           const result = await api.createTenant(form);
+          console.log('Tenant created:', result);
           CURRENT_TENANT_ID = result.data.id;
           setToast({ type: 'success', message: 'Tenant created!' });
           setShowModal(false);
+          setForm({ name: '', slug: '', tier: 'free', contact_email: '' });
           onRefresh();
         } catch (err) {
-          setToast({ type: 'error', message: err.message });
+          console.error('Tenant creation failed:', err);
+          setToast({ type: 'error', message: 'Failed: ' + err.message });
         }
+        setCreating(false);
       };
 
       return (
@@ -867,9 +878,10 @@
               </div>
               <button
                 onClick={handleCreate}
-                className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl font-medium transition-colors"
+                disabled={creating}
+                className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Tenant
+                {creating ? 'Creating...' : 'Create Tenant'}
               </button>
             </div>
           </Modal>

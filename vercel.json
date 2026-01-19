@@ -12,12 +12,20 @@
   ],
   "routes": [
     {
+      "src": "^/$",
+      "dest": "/dashboard.html"
+    },
+    {
       "src": "/dashboard",
       "dest": "/dashboard.html"
     },
     {
-      "src": "^/dashboard.html$",
-      "dest": "/dashboard.html"
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    },
+    {
+      "src": "/health",
+      "dest": "/api/index.ts"
     },
     {
       "src": "/(.*)",
