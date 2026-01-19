@@ -24,7 +24,10 @@ let db: SqlJsDatabase | null = null;
 export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
   try {
     console.log('[DB] Loading sql.js...');
-    const SQL = await initSqlJs();
+    // For serverless environments, load WASM from CDN
+    const SQL = await initSqlJs({
+      locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+    });
     console.log('[DB] Creating database...');
     db = new SQL.Database();
 
