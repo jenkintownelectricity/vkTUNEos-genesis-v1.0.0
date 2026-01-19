@@ -25,15 +25,16 @@ export async function initDatabase(): Promise<Client> {
   try {
     console.log('[DB] Connecting to Turso database...');
 
-    // Use Turso URL and token from environment variables
-    const url = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL;
-    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
+    // Use Turso URL and token from environment variables (check multiple common names)
+    const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || process.env.LIBSQL_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN;
 
     if (!url) {
       console.log('[DB] No Turso URL found, using in-memory SQLite');
-      // Fallback to local file for development
+      // Use in-memory database for serverless (no filesystem access)
+      // Note: Data will not persist between invocations without Turso
       db = createClient({
-        url: 'file:local.db'
+        url: ':memory:'
       });
     } else {
       console.log('[DB] Using Turso URL:', url);
