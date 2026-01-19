@@ -22,17 +22,26 @@ import {
 let db: SqlJsDatabase | null = null;
 
 export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
-  const SQL = await initSqlJs();
-  db = new SQL.Database();
+  try {
+    console.log('[DB] Loading sql.js...');
+    const SQL = await initSqlJs();
+    console.log('[DB] Creating database...');
+    db = new SQL.Database();
 
-  // Create tables
-  db.run(SCHEMA_SQL);
+    // Create tables
+    console.log('[DB] Creating tables...');
+    db.run(SCHEMA_SQL);
 
-  // Seed default tenants for each tier
-  seedDefaultTenants();
+    // Seed default tenants for each tier
+    console.log('[DB] Seeding default tenants...');
+    seedDefaultTenants();
 
-  console.log('[DB] Database initialized with default tenants');
-  return db;
+    console.log('[DB] Database initialized with default tenants');
+    return db;
+  } catch (err) {
+    console.error('[DB] Initialization failed:', err);
+    throw err;
+  }
 }
 
 /**
@@ -40,10 +49,15 @@ export async function initDatabase(path?: string): Promise<SqlJsDatabase> {
  * L0 AUTHORITATIVE: Preload FREE, PREMIUM, and ENTERPRISE tier tenants
  */
 function seedDefaultTenants(): void {
-  const database = getDatabase();
-  const now = new Date().toISOString();
+  if (!db) {
+    console.error('[DB] Cannot seed: database not initialized');
+    return;
+  }
 
-  const defaultTenants = [
+  try {
+    const now = new Date().toISOString();
+
+    const defaultTenants = [
     {
       id: 'tenant-free-default',
       name: 'Free Tier Demo',
@@ -68,7 +82,7 @@ function seedDefaultTenants(): void {
   ];
 
   for (const tenant of defaultTenants) {
-    database.run(`
+    db.run(`
       INSERT OR IGNORE INTO tenants (id, name, slug, tier, config, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
@@ -103,7 +117,7 @@ function seedDefaultTenants(): void {
   for (const tenant of defaultTenants) {
     for (const coord of sampleCoordinates) {
       const coordId = `${tenant.id}-${coord.L1}-${coord.L3}-${coord.L4}`.toLowerCase();
-      database.run(`
+      db.run(`
         INSERT OR IGNORE INTO coordinates (id, tenant_id, L1_category, L2_domain, L3_entity, L4_attribute, L5_state, value, metadata, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
@@ -122,7 +136,10 @@ function seedDefaultTenants(): void {
     }
   }
 
-  console.log('[DB] Seeded 3 default tenants (free, premium, enterprise) with sample coordinates');
+    console.log('[DB] Seeded 3 default tenants (free, premium, enterprise) with sample coordinates');
+  } catch (err) {
+    console.error('[DB] Seed failed:', err);
+  }
 }
 
 export function getDatabase(): SqlJsDatabase {
