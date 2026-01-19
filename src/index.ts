@@ -30,6 +30,7 @@ import workflowsRouter from './api/workflows.js';
 import usageRouter from './api/usage.js';
 import docsRouter from './api/docs.js';
 import projectsRouter from './api/projects.js';
+import studioRouter from './api/studio.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -159,6 +160,9 @@ app.use('/api/v1/docs', docsRouter);
 
 // Session 3 Routes - Semantic Compression & Single-File Projects
 app.use('/api/v1/projects', projectsRouter);
+
+// Session 4 Routes - AI Studio (Music, Voice, Stems, Video)
+app.use('/api/v1/studio', studioRouter);
 
 // ============================================================================
 // ERROR HANDLING
