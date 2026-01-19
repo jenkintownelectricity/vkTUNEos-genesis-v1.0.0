@@ -75,9 +75,13 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   try {
     await ensureInitialized();
     next();
-  } catch (err) {
+  } catch (err: any) {
     console.error('[Server] Init failed:', err);
-    res.status(500).json({ error: 'Server initialization failed' });
+    res.status(500).json({
+      error: 'Server initialization failed',
+      message: err?.message || 'Unknown error',
+      stack: process.env.NODE_ENV !== 'production' ? err?.stack : undefined
+    });
   }
 });
 
