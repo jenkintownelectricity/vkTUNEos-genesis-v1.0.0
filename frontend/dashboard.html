@@ -344,14 +344,14 @@
         const config = formatConfig[format];
         const filename = `${generatedTrack.title.replace(/[^a-z0-9]/gi, '_')}_${generatedTrack.tempo}bpm_${generatedTrack.key.replace(' ', '')}.${config.ext}`;
 
-        // Create demo audio file header (this is a minimal valid WAV header for demo purposes)
         let content;
         if (format === 'WAV') {
-          // Create a minimal valid WAV file with silence
+          // Create a playable WAV file with actual audio (demo tone based on tempo)
           const sampleRate = 44100;
-          const numChannels = 2;
+          const numChannels = 1; // Mono for smaller file
           const bitsPerSample = 16;
-          const numSamples = sampleRate * generatedTrack.duration;
+          const durationSec = Math.min(generatedTrack.duration, 10); // Cap at 10 sec for demo
+          const numSamples = sampleRate * durationSec;
           const dataSize = numSamples * numChannels * (bitsPerSample / 8);
           const buffer = new ArrayBuffer(44 + dataSize);
           const view = new DataView(buffer);
@@ -363,7 +363,7 @@
           writeString(8, 'WAVE');
           writeString(12, 'fmt ');
           view.setUint32(16, 16, true);
-          view.setUint16(20, 1, true);
+          view.setUint16(20, 1, true); // PCM
           view.setUint16(22, numChannels, true);
           view.setUint32(24, sampleRate, true);
           view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
@@ -371,7 +371,45 @@
           view.setUint16(34, bitsPerSample, true);
           writeString(36, 'data');
           view.setUint32(40, dataSize, true);
-          // Audio data is zeros (silence) by default
+
+          // Generate actual audio: beat pattern based on tempo with melodic tones
+          const bpm = generatedTrack.tempo || 120;
+          const beatInterval = 60 / bpm; // seconds per beat
+          const keyFreqs = { 'C': 261.63, 'D': 293.66, 'E': 329.63, 'F': 349.23, 'G': 392.00, 'A': 440.00, 'B': 493.88 };
+          const baseFreq = keyFreqs[generatedTrack.key?.charAt(0)] || 261.63;
+          const isMinor = generatedTrack.key?.includes('Minor') || generatedTrack.key?.includes('m');
+          const chord = isMinor ? [1, 1.2, 1.5] : [1, 1.25, 1.5]; // Minor/Major third
+
+          for (let i = 0; i < numSamples; i++) {
+            const t = i / sampleRate;
+            const beatPhase = (t % beatInterval) / beatInterval;
+            const beatNum = Math.floor(t / beatInterval) % 4;
+
+            // Kick drum on beats 1 and 3
+            let sample = 0;
+            if ((beatNum === 0 || beatNum === 2) && beatPhase < 0.1) {
+              const kickEnv = 1 - (beatPhase / 0.1);
+              sample += Math.sin(2 * Math.PI * 60 * t * (1 - beatPhase * 2)) * kickEnv * 0.5;
+            }
+
+            // Hi-hat on all beats
+            if (beatPhase < 0.05) {
+              sample += (Math.random() * 2 - 1) * (1 - beatPhase / 0.05) * 0.2;
+            }
+
+            // Bass note
+            const bassEnv = Math.exp(-beatPhase * 3);
+            sample += Math.sin(2 * Math.PI * baseFreq * 0.5 * t) * bassEnv * 0.3;
+
+            // Chord pad (arpeggiated based on beat)
+            const chordNote = chord[beatNum % 3];
+            const padEnv = 0.2;
+            sample += Math.sin(2 * Math.PI * baseFreq * chordNote * t) * padEnv * 0.15;
+
+            // Clamp and write as 16-bit
+            sample = Math.max(-1, Math.min(1, sample));
+            view.setInt16(44 + i * 2, sample * 32767, true);
+          }
 
           content = new Blob([buffer], { type: config.mime });
         } else {
