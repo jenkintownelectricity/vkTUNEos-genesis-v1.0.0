@@ -140,17 +140,26 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // SERVER STARTUP
 // ============================================================================
 
-async function main() {
-  try {
-    // Initialize database
-    console.log('[Server] Initializing database...');
-    await initDatabase();
-    
-    // Initialize resource tracking
-    console.log('[Server] Initializing resource tracking...');
-    initResourceTracking();
-    
-    // Start server
+// Initialize for serverless (Vercel)
+let initialized = false;
+async function ensureInitialized() {
+  if (initialized) return;
+  initialized = true;
+  console.log('[Server] Initializing database...');
+  await initDatabase();
+  console.log('[Server] Initializing resource tracking...');
+  initResourceTracking();
+}
+
+// For serverless: initialize on first request
+app.use(async (req, res, next) => {
+  await ensureInitialized();
+  next();
+});
+
+// Start server only when not on Vercel
+if (!process.env.VERCEL) {
+  ensureInitialized().then(() => {
     app.listen(PORT, () => {
       console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
@@ -162,28 +171,17 @@ async function main() {
 ║    ╚████╔╝ ██║  ██╗   ██║   ╚██████╔╝██║ ╚████║███████╗       ║
 ║     ╚═══╝  ╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝       ║
 ║                                                               ║
-║   Music Kernel v1.0 | Session 2 Complete                      ║
-║   Domain: vkTUNEos.com                                        ║
+║   Music Kernel v1.0 | vkTUNEos.com                            ║
 ║   Port: ${PORT}                                                   ║
 ║   Docs: http://localhost:${PORT}/api/v1/docs                      ║
-║                                                               ║
-║   Features:                                                   ║
-║   • Voice Cloning (KitsAI, ElevenLabs)                        ║
-║   • Stem Separation (LALAL.AI)                                ║
-║   • Music Generation (Suno, Udio)                             ║
-║   • Audio Production (LANDR)                                  ║
-║   • Workflows (text-to-music, lyrics-to-song, remix)          ║
-║   • Rate Limiting & License Enforcement                       ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
       `);
     });
-  } catch (err) {
+  }).catch(err => {
     console.error('[Server] Failed to start:', err);
     process.exit(1);
-  }
+  });
 }
-
-main();
 
 export default app;
