@@ -39,8 +39,8 @@ const CreateTenantBody = z.object({
  * List all tenants
  */
 router.get('/', async (req: Request, res: Response) => {
-  const tenants = listTenants();
-  
+  const tenants = await listTenants();
+
   res.json({
     success: true,
     data: tenants,
@@ -58,18 +58,18 @@ router.get('/:id', async (req: Request, res: Response) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
   // Try by ID first, then by slug
-  let tenant = getTenant(id);
+  let tenant = await getTenant(id);
   if (!tenant) {
-    tenant = getTenantBySlug(id);
+    tenant = await getTenantBySlug(id);
   }
-  
+
   if (!tenant) {
     return res.status(404).json({
       error: 'Tenant not found',
       code: 'NOT_FOUND'
     });
   }
-  
+
   res.json({
     success: true,
     data: tenant
@@ -83,20 +83,20 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const body = CreateTenantBody.parse(req.body);
-    
+
     // Check for duplicate slug
-    const existing = getTenantBySlug(body.slug);
+    const existing = await getTenantBySlug(body.slug);
     if (existing) {
       return res.status(409).json({
         error: 'Tenant slug already exists',
         code: 'DUPLICATE_SLUG'
       });
     }
-    
-    const tenant = createTenant(body);
-    
+
+    const tenant = await createTenant(body);
+
     // Audit the creation
-    createAuditEvent({
+    await createAuditEvent({
       tenant_id: tenant.id,
       event_type: 'TENANT',
       event_category: 'lifecycle',
@@ -107,7 +107,7 @@ router.post('/', async (req: Request, res: Response) => {
       ip_address: req.ip,
       user_agent: req.headers['user-agent']
     });
-    
+
     res.status(201).json({
       success: true,
       data: tenant

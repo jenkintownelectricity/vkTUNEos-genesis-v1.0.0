@@ -62,12 +62,12 @@ router.get('/', requireTenant, async (req: Request, res: Response) => {
   try {
     const typedReq = req as RequestWithTenant;
     const query = ListAuditQuery.parse(req.query);
-    
-    const events = listAuditEvents({
+
+    const events = await listAuditEvents({
       tenant_id: typedReq.tenant_id,
       ...query
     });
-    
+
     res.json({
       success: true,
       data: events,
@@ -96,19 +96,19 @@ router.get('/export', requireTenant, async (req: Request, res: Response) => {
   try {
     const typedReq = req as RequestWithTenant;
     const query = ListAuditQuery.parse(req.query);
-    
+
     // Get all matching events (higher limit for export)
-    const events = listAuditEvents({
+    const events = await listAuditEvents({
       tenant_id: typedReq.tenant_id,
       ...query,
       limit: 10000
     });
-    
+
     const filename = `audit-export-${typedReq.tenant_id}-${new Date().toISOString().split('T')[0]}.json`;
-    
+
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
+
     res.json({
       export_date: new Date().toISOString(),
       tenant_id: typedReq.tenant_id,

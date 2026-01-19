@@ -193,10 +193,10 @@ export interface RequestWithLicense extends Request {
 /**
  * Middleware to load and attach license context to request
  */
-export function loadLicenseContext(req: Request, res: Response, next: NextFunction) {
+export async function loadLicenseContext(req: Request, res: Response, next: NextFunction) {
   const typedReq = req as RequestWithLicense;
   const tenant_id = req.headers['x-tenant-id'] as string;
-  
+
   if (!tenant_id) {
     // No tenant = free tier defaults
     typedReq.license = {
@@ -207,18 +207,18 @@ export function loadLicenseContext(req: Request, res: Response, next: NextFuncti
     };
     return next();
   }
-  
-  const tenant = getTenant(tenant_id);
-  
+
+  const tenant = await getTenant(tenant_id);
+
   if (!tenant) {
     return res.status(404).json({
       error: 'Tenant not found',
       code: 'TENANT_NOT_FOUND'
     });
   }
-  
+
   const tier = tenant.tier as LicenseTier;
-  
+
   typedReq.tenant_id = tenant_id;
   typedReq.license = {
     tenant_id,
@@ -226,7 +226,7 @@ export function loadLicenseContext(req: Request, res: Response, next: NextFuncti
     limits: TIER_LIMITS[tier],
     features: TIER_FEATURES[tier]
   };
-  
+
   next();
 }
 

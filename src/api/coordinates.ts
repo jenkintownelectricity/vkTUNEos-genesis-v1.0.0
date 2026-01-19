@@ -97,32 +97,31 @@ function auditMiddleware(action: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     const originalJson = res.json.bind(res);
     const typedReq = req as RequestWithTenant;
-    
+
     res.json = (body: any) => {
       // Only audit successful operations
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        try {
-          createAuditEvent({
-            tenant_id: typedReq.tenant_id,
-            user_id: typedReq.user_id,
-            event_type: 'DATA',
-            event_category: 'coordinate',
-            resource_type: 'coordinate',
-            resource_id: body?.data?.id || req.params.id,
-            action,
-            new_value: action === 'delete' ? undefined : body?.data,
-            ip_address: req.ip,
-            user_agent: req.headers['user-agent'],
-            correlation_id: typedReq.correlation_id
-          });
-        } catch (err) {
+        // Fire-and-forget audit event (don't block response)
+        createAuditEvent({
+          tenant_id: typedReq.tenant_id,
+          user_id: typedReq.user_id,
+          event_type: 'DATA',
+          event_category: 'coordinate',
+          resource_type: 'coordinate',
+          resource_id: body?.data?.id || req.params.id,
+          action,
+          new_value: action === 'delete' ? undefined : body?.data,
+          ip_address: req.ip,
+          user_agent: req.headers['user-agent'],
+          correlation_id: typedReq.correlation_id
+        }).catch(err => {
           console.error('[Audit] Failed to log event:', err);
-        }
+        });
       }
-      
+
       return originalJson(body);
     };
-    
+
     next();
   };
 }
@@ -139,12 +138,12 @@ router.get('/', requireTenant, async (req: Request, res: Response) => {
   try {
     const typedReq = req as RequestWithTenant;
     const query = ListCoordinatesQuery.parse(req.query);
-    
-    const coordinates = listCoordinates({
+
+    const coordinates = await listCoordinates({
       tenant_id: typedReq.tenant_id,
       ...query
     });
-    
+
     res.json({
       success: true,
       data: coordinates,
@@ -173,15 +172,15 @@ router.get('/:id', requireTenant, async (req: Request, res: Response) => {
   const typedReq = req as RequestWithTenant;
   const id = asString(req.params.id);
 
-  const coordinate = getCoordinate(id, typedReq.tenant_id);
-  
+  const coordinate = await getCoordinate(id, typedReq.tenant_id);
+
   if (!coordinate) {
     return res.status(404).json({
       error: 'Coordinate not found',
       code: 'NOT_FOUND'
     });
   }
-  
+
   res.json({
     success: true,
     data: coordinate
@@ -197,7 +196,7 @@ router.get('/resolve/:path(*)', requireTenant, async (req: Request, res: Respons
   const path = asString(req.params.path);
 
   const parsed = parseCoordinate(path);
-  
+
   if (!parsed) {
     return res.status(400).json({
       error: 'Invalid coordinate path',
@@ -205,9 +204,9 @@ router.get('/resolve/:path(*)', requireTenant, async (req: Request, res: Respons
       hint: 'Format: Music.Category.Domain.Entity.Attribute.State'
     });
   }
-  
-  const coordinate = findCoordinate(typedReq.tenant_id, parsed);
-  
+
+  const coordinate = await findCoordinate(typedReq.tenant_id, parsed);
+
   if (!coordinate) {
     return res.status(404).json({
       error: 'Coordinate not found',
@@ -215,7 +214,7 @@ router.get('/resolve/:path(*)', requireTenant, async (req: Request, res: Respons
       path
     });
   }
-  
+
   res.json({
     success: true,
     data: coordinate
@@ -230,7 +229,7 @@ router.post('/', requireTenant, auditMiddleware('create'), async (req: Request, 
   try {
     const typedReq = req as RequestWithTenant;
     const body = CreateCoordinateBody.parse(req.body);
-    
+
     const coord = {
       L1_category: body.L1_category,
       L2_domain: body.L2_domain,
@@ -238,10 +237,10 @@ router.post('/', requireTenant, auditMiddleware('create'), async (req: Request, 
       L4_attribute: body.L4_attribute,
       L5_state: body.L5_state
     };
-    
+
     // Run full validation
     const validation = validateFull(coord, body.value, body.metadata);
-    
+
     if (!validation.valid) {
       return res.status(400).json({
         error: 'Validation failed',
@@ -249,9 +248,9 @@ router.post('/', requireTenant, auditMiddleware('create'), async (req: Request, 
         validation
       });
     }
-    
+
     // Check for duplicates
-    const existing = findCoordinate(typedReq.tenant_id, coord);
+    const existing = await findCoordinate(typedReq.tenant_id, coord);
     if (existing) {
       return res.status(409).json({
         error: 'Coordinate already exists',
@@ -260,16 +259,16 @@ router.post('/', requireTenant, auditMiddleware('create'), async (req: Request, 
         coordinate: coordinateToString(coord)
       });
     }
-    
+
     // Create the coordinate
-    const created = createCoordinate({
+    const created = await createCoordinate({
       tenant_id: typedReq.tenant_id,
       coordinate: coord,
       value: body.value,
       metadata: body.metadata,
       created_by: typedReq.user_id
     });
-    
+
     res.status(201).json({
       success: true,
       data: created,
@@ -297,16 +296,16 @@ router.put('/:id', requireTenant, auditMiddleware('update'), async (req: Request
     const typedReq = req as RequestWithTenant;
     const id = asString(req.params.id);
     const body = UpdateCoordinateBody.parse(req.body);
-    
+
     // Check exists
-    const existing = getCoordinate(id, typedReq.tenant_id);
+    const existing = await getCoordinate(id, typedReq.tenant_id);
     if (!existing) {
       return res.status(404).json({
         error: 'Coordinate not found',
         code: 'NOT_FOUND'
       });
     }
-    
+
     // Validate the update
     const newCoord = {
       L1_category: existing.L1_category,
@@ -315,13 +314,13 @@ router.put('/:id', requireTenant, auditMiddleware('update'), async (req: Request
       L4_attribute: existing.L4_attribute,
       L5_state: body.L5_state || existing.L5_state
     };
-    
-    const newMetadata = body.metadata !== undefined 
+
+    const newMetadata = body.metadata !== undefined
       ? { ...existing.metadata, ...body.metadata }
       : existing.metadata;
-    
+
     const validation = validateFull(newCoord, body.value ?? existing.value, newMetadata);
-    
+
     if (!validation.valid) {
       return res.status(400).json({
         error: 'Validation failed',
@@ -329,9 +328,9 @@ router.put('/:id', requireTenant, auditMiddleware('update'), async (req: Request
         validation
       });
     }
-    
+
     // Update
-    const updated = updateCoordinate({
+    const updated = await updateCoordinate({
       id,
       tenant_id: typedReq.tenant_id,
       value: body.value,
@@ -339,7 +338,7 @@ router.put('/:id', requireTenant, auditMiddleware('update'), async (req: Request
       L5_state: body.L5_state,
       updated_by: typedReq.user_id
     });
-    
+
     res.json({
       success: true,
       data: updated,
@@ -367,23 +366,23 @@ router.delete('/:id', requireTenant, auditMiddleware('delete'), async (req: Requ
   const id = asString(req.params.id);
 
   // Check exists
-  const existing = getCoordinate(id, typedReq.tenant_id);
+  const existing = await getCoordinate(id, typedReq.tenant_id);
   if (!existing) {
     return res.status(404).json({
       error: 'Coordinate not found',
       code: 'NOT_FOUND'
     });
   }
-  
-  const deleted = deleteCoordinate(id, typedReq.tenant_id);
-  
+
+  const deleted = await deleteCoordinate(id, typedReq.tenant_id);
+
   if (!deleted) {
     return res.status(500).json({
       error: 'Failed to delete coordinate',
       code: 'DELETE_FAILED'
     });
   }
-  
+
   res.json({
     success: true,
     deleted: {
@@ -435,10 +434,10 @@ router.post('/bulk', requireTenant, async (req: Request, res: Response) => {
   try {
     const typedReq = req as RequestWithTenant;
     const items = z.array(CreateCoordinateBody).parse(req.body);
-    
+
     const results: any[] = [];
     const errors: any[] = [];
-    
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const coord = {
@@ -448,9 +447,9 @@ router.post('/bulk', requireTenant, async (req: Request, res: Response) => {
         L4_attribute: item.L4_attribute,
         L5_state: item.L5_state
       };
-      
+
       const validation = validateFull(coord, item.value, item.metadata);
-      
+
       if (!validation.valid) {
         errors.push({
           index: i,
@@ -459,8 +458,8 @@ router.post('/bulk', requireTenant, async (req: Request, res: Response) => {
         });
         continue;
       }
-      
-      const existing = findCoordinate(typedReq.tenant_id, coord);
+
+      const existing = await findCoordinate(typedReq.tenant_id, coord);
       if (existing) {
         errors.push({
           index: i,
@@ -469,18 +468,18 @@ router.post('/bulk', requireTenant, async (req: Request, res: Response) => {
         });
         continue;
       }
-      
-      const created = createCoordinate({
+
+      const created = await createCoordinate({
         tenant_id: typedReq.tenant_id,
         coordinate: coord,
         value: item.value,
         metadata: item.metadata,
         created_by: typedReq.user_id
       });
-      
+
       results.push(created);
     }
-    
+
     res.status(errors.length > 0 ? 207 : 201).json({
       success: errors.length === 0,
       created: results,
