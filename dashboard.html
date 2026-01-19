@@ -330,6 +330,77 @@
       const handleStemVolume = (stem, value) => setStems(prev => ({ ...prev, [stem]: { ...prev[stem], volume: value } }));
       const toggleStemMute = (stem) => setStems(prev => ({ ...prev, [stem]: { ...prev[stem], muted: !prev[stem].muted } }));
 
+      // Export track as downloadable file
+      const exportTrack = (format) => {
+        if (!generatedTrack) return;
+
+        const formatConfig = {
+          'WAV': { ext: 'wav', mime: 'audio/wav' },
+          'MP3': { ext: 'mp3', mime: 'audio/mpeg' },
+          'FLAC': { ext: 'flac', mime: 'audio/flac' },
+          'Stems (ZIP)': { ext: 'zip', mime: 'application/zip' }
+        };
+
+        const config = formatConfig[format];
+        const filename = `${generatedTrack.title.replace(/[^a-z0-9]/gi, '_')}_${generatedTrack.tempo}bpm_${generatedTrack.key.replace(' ', '')}.${config.ext}`;
+
+        // Create demo audio file header (this is a minimal valid WAV header for demo purposes)
+        let content;
+        if (format === 'WAV') {
+          // Create a minimal valid WAV file with silence
+          const sampleRate = 44100;
+          const numChannels = 2;
+          const bitsPerSample = 16;
+          const numSamples = sampleRate * generatedTrack.duration;
+          const dataSize = numSamples * numChannels * (bitsPerSample / 8);
+          const buffer = new ArrayBuffer(44 + dataSize);
+          const view = new DataView(buffer);
+
+          // WAV header
+          const writeString = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+          writeString(0, 'RIFF');
+          view.setUint32(4, 36 + dataSize, true);
+          writeString(8, 'WAVE');
+          writeString(12, 'fmt ');
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, numChannels, true);
+          view.setUint32(24, sampleRate, true);
+          view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+          view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+          view.setUint16(34, bitsPerSample, true);
+          writeString(36, 'data');
+          view.setUint32(40, dataSize, true);
+          // Audio data is zeros (silence) by default
+
+          content = new Blob([buffer], { type: config.mime });
+        } else {
+          // For other formats, create a placeholder with track metadata
+          const metadata = JSON.stringify({
+            title: generatedTrack.title,
+            duration: generatedTrack.duration,
+            tempo: generatedTrack.tempo,
+            key: generatedTrack.key,
+            format: format,
+            generated: generatedTrack.createdAt,
+            note: 'Demo export - connect to vkTUNEos API for real audio generation'
+          }, null, 2);
+          content = new Blob([metadata], { type: config.mime });
+        }
+
+        // Create download link and trigger
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast.addToast(`Downloaded ${filename}`, 'success');
+      };
+
       return (
         <div className="fade-in">
           <div className="mb-8">
@@ -378,7 +449,7 @@
                     <div className="flex items-center gap-1">{Array.from({ length: 50 }, (_, i) => <div key={i} className="w-1 rounded-full" style={{ height: `${Math.random() * 40 + 10}px`, background: i < 25 ? 'linear-gradient(to top, var(--primary-500), var(--accent-500))' : 'rgba(255,255,255,0.2)' }} />)}</div>
                   </div>
                   <div className="flex gap-3">
-                    {exportFormats.map(format => <button key={format} onClick={() => toast.addToast(`Exporting as ${format}...`, 'info')} className="px-4 py-2 rounded-lg text-sm font-medium transition-all" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>{format}</button>)}
+                    {exportFormats.map(format => <button key={format} onClick={() => exportTrack(format)} className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:scale-105" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>{format}</button>)}
                   </div>
                 </div>
               )}
