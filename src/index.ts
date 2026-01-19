@@ -55,6 +55,32 @@ app.use(morgan('combined'));
 // JSON body parsing
 app.use(express.json({ limit: '10mb' }));
 
+// ============================================================================
+// DATABASE INITIALIZATION (must be before routes!)
+// ============================================================================
+
+let initialized = false;
+async function ensureInitialized() {
+  if (initialized) return;
+  initialized = true;
+  console.log('[Server] Initializing database...');
+  await initDatabase();
+  console.log('[Server] Initializing resource tracking...');
+  initResourceTracking();
+  console.log('[Server] Initialization complete!');
+}
+
+// For serverless: initialize on first request (BEFORE routes)
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await ensureInitialized();
+    next();
+  } catch (err) {
+    console.error('[Server] Init failed:', err);
+    res.status(500).json({ error: 'Server initialization failed' });
+  }
+});
+
 // Serve static files (dashboard.html)
 app.use(express.static(path.join(__dirname, '..')));
 
@@ -153,23 +179,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // ============================================================================
 // SERVER STARTUP
 // ============================================================================
-
-// Initialize for serverless (Vercel)
-let initialized = false;
-async function ensureInitialized() {
-  if (initialized) return;
-  initialized = true;
-  console.log('[Server] Initializing database...');
-  await initDatabase();
-  console.log('[Server] Initializing resource tracking...');
-  initResourceTracking();
-}
-
-// For serverless: initialize on first request
-app.use(async (req, res, next) => {
-  await ensureInitialized();
-  next();
-});
 
 // Start server only when not on Vercel
 if (!process.env.VERCEL) {
